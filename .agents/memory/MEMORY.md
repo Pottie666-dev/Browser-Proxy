@@ -1,0 +1,2 @@
+- [GET form proxy bug](get-form-proxy-bug.md) — GET form submissions strip proxy ?url=&accountId= params; fix is JS injection in WebView
+- [Expo icon font loading](expo-icon-font-loading.md) — load Feather separately from Inter so CDN failures don't break icons
