@@ -26,8 +26,12 @@ import { buildFingerprintScript, buildFormInterceptScript } from "@/lib/fingerpr
 const DEFAULT_URL = "https://www.google.com";
 
 function getApiBaseUrl(): string {
-  const rawBase = process.env.EXPO_PUBLIC_DOMAIN?.trim();
-  if (!rawBase) return "";
+  const rawBase =
+    process.env.EXPO_PUBLIC_API_URL?.trim() ??
+    process.env.EXPO_PUBLIC_DOMAIN?.trim();
+
+  if (!rawBase) return "http://192.168.0.8:3000";
+
   return rawBase.startsWith("http://") || rawBase.startsWith("https://")
     ? rawBase.replace(/\/+$/, "")
     : `https://${rawBase.replace(/\/+$/, "")}`;

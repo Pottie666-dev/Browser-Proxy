@@ -26,7 +26,8 @@ import {
   type Account,
 } from "@workspace/api-client-react";
 
-function getDeviceColor(deviceName: string, primary: string) {
+function getDeviceColor(deviceName: string | undefined | null, primary: string) {
+  deviceName = deviceName ?? "";
   if (deviceName.includes("iPhone")) return "#007aff";
   if (deviceName.includes("Samsung")) return "#1428a0";
   if (deviceName.includes("Google")) return "#4285f4";

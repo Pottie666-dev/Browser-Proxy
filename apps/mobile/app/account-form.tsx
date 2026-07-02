@@ -271,7 +271,7 @@ export default function AccountFormScreen() {
     const e: Record<string, string> = {};
     if (!name.trim()) e["name"] = "First name is required";
     if (!surname.trim()) e["surname"] = "Last name is required";
-    if (!idNumber.trim()) e["idNumber"] = "ID number is required";
+    // ID number is optional for now.
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -294,12 +294,18 @@ export default function AccountFormScreen() {
     if (isEdit && params.accountId) {
       updateAccount.mutate(
         { id: params.accountId, data: payload },
-        { onSuccess: () => { queryClient.invalidateQueries({ queryKey: getListAccountsQueryKey() }); Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); router.back(); } }
+        {
+          onSuccess: () => { queryClient.invalidateQueries({ queryKey: getListAccountsQueryKey() }); Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); router.back(); },
+          onError: (error) => { console.error("Account save failed", error); Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error); }
+        }
       );
     } else {
       createAccount.mutate(
         { data: payload },
-        { onSuccess: () => { queryClient.invalidateQueries({ queryKey: getListAccountsQueryKey() }); Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); router.back(); } }
+        {
+          onSuccess: () => { queryClient.invalidateQueries({ queryKey: getListAccountsQueryKey() }); Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); router.back(); },
+          onError: (error) => { console.error("Account save failed", error); Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error); }
+        }
       );
     }
   }

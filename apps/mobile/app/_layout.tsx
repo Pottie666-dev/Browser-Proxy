@@ -16,13 +16,16 @@ import { setBaseUrl } from "@workspace/api-client-react";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
-const rawApiDomain = process.env.EXPO_PUBLIC_DOMAIN?.trim();
+const rawApiDomain =
+  process.env.EXPO_PUBLIC_API_URL?.trim() ??
+  process.env.EXPO_PUBLIC_DOMAIN?.trim();
+
 setBaseUrl(
   rawApiDomain
     ? rawApiDomain.startsWith("http://") || rawApiDomain.startsWith("https://")
-      ? rawApiDomain
-      : `https://${rawApiDomain}`
-    : null
+      ? rawApiDomain.replace(/\/+$/, "")
+      : `https://${rawApiDomain.replace(/\/+$/, "")}`
+    : "http://192.168.0.8:3000"
 );
 
 SplashScreen.preventAutoHideAsync();
