@@ -247,7 +247,7 @@ export default function AccountsScreen() {
       {!isLoading && !isError && (
         <FlatList
           data={accounts ?? []}
-          keyExtractor={(item) => item.id.toString()}
+          keyExtractor={(item, index) => String(item?.id ?? item?._id ?? index)}
           contentContainerStyle={[styles.list, { paddingBottom: (Platform.OS === "web" ? 34 : insets.bottom) + 16 }]}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={() => (
