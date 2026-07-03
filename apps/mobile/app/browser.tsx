@@ -384,7 +384,7 @@ export default function BrowserScreen() {
           source={{ uri: currentProxyUrl }}
           style={styles.webView}
           userAgent={userAgent || undefined}
-          injectedJavaScriptBeforeContentLoaded={buildFingerprintScript(accountId, deviceName, userAgent) + '\n' + buildFormInterceptScript()}
+          injectedJavaScriptBeforeContentLoaded={buildFingerprintScript() + '\n' + buildFormInterceptScript()}
           injectedJavaScriptForMainFrameOnly={false}
           onLoadStart={() => { setIsLoading(true); setLoadingProgress(0.1); }}
           onError={({ nativeEvent }: { nativeEvent: { description?: string } }) => {

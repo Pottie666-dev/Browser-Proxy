@@ -17,6 +17,8 @@ const accountSchema = new Schema(
     fingerprint: { type: Schema.Types.Mixed },
     cookies: { type: Schema.Types.Mixed },
     metadata: { type: Schema.Types.Mixed },
+    favorite: { type: Boolean, default: false },
+    tags: { type: [String], default: [] },
   },
   {
     timestamps: true,
