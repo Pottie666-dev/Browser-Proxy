@@ -3,7 +3,7 @@ import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -22,6 +22,7 @@ import type { WebViewNavigation } from "react-native-webview";
 
 import { useColors } from "@/hooks/useColors";
 import { buildFingerprintScript, buildFormInterceptScript, type FingerprintProfile } from "@/lib/fingerprint";
+import { buildBrowserStateCaptureScript, buildBrowserStateRestoreScript, type BrowserState } from "@/lib/browser-state";
 
 const DEFAULT_URL = "https://www.google.com";
 
@@ -150,7 +151,9 @@ export default function BrowserScreen() {
     timezone: String(fingerprintTimezone ?? "") || storedFingerprintProfile.timezone,
   };
 
+  const [browserState, setBrowserState] = useState<BrowserState | null>(null);
   const [showDebug, setShowDebug] = useState(false);
+  const apiBaseUrl = getApiBaseUrl();
 
   const topInset = Platform.OS === "web" ? 67 : insets.top;
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
@@ -170,6 +173,23 @@ export default function BrowserScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setCurrentProxyUrl(proxyUrl);
   }
+
+  const saveBrowserState = useCallback(async (nextState: BrowserState) => {
+    if (!accountId || !apiBaseUrl) return;
+    setBrowserState(nextState);
+    await fetch(`${apiBaseUrl}/api/accounts/${encodeURIComponent(accountId)}/browser-state`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(nextState),
+    }).catch(() => {});
+  }, [accountId, apiBaseUrl]);
+
+  const handleWebMessage = useCallback((event: { nativeEvent?: { data?: string } }) => {
+    try {
+      const msg = JSON.parse(event.nativeEvent?.data ?? "");
+      if (msg?.type === "BROWSER_PROXY_STATE") saveBrowserState(msg.state as BrowserState);
+    } catch {}
+  }, [saveBrowserState]);
 
   const onNavigationStateChange = useCallback(
     (navState: WebViewNavigation) => {
@@ -400,11 +420,12 @@ export default function BrowserScreen() {
         </View>
       ) : (
         <WebView
+          onMessage={handleWebMessage}
           ref={webViewRef}
           source={{ uri: currentProxyUrl }}
           style={styles.webView}
           userAgent={userAgent || undefined}
-          injectedJavaScriptBeforeContentLoaded={buildFingerprintScript(fingerprintProfile) + '\n' + buildFormInterceptScript()}
+          injectedJavaScriptBeforeContentLoaded={buildBrowserStateRestoreScript(browserState) + '\n' + buildFingerprintScript(fingerprintProfile) + '\n' + buildFormInterceptScript() + '\n' + buildBrowserStateCaptureScript()}
           injectedJavaScriptForMainFrameOnly={false}
           onLoadStart={() => { setIsLoading(true); setLoadingProgress(0.1); }}
           onError={({ nativeEvent }: { nativeEvent: { description?: string } }) => {

@@ -120,6 +120,87 @@ router.post("/", async (req, res, next) => {
   }
 });
 
+
+router.get("/:id/browser-state", async (req, res, next) => {
+  try {
+    if (await useMongo()) {
+      const account = await AccountModel.findById(req.params.id).lean();
+      if (!account) {
+        res.status(404).json({ message: "Account not found" });
+        return;
+      }
+
+      res.json((account as any).browserState ?? {
+        cookies: {},
+        localStorage: {},
+        sessionStorage: {},
+        history: [],
+        updatedAt: null,
+      });
+      return;
+    }
+
+    const account = memoryAccounts.get(req.params.id);
+    if (!account) {
+      res.status(404).json({ message: "Account not found" });
+      return;
+    }
+
+    res.json(account.browserState ?? {
+      cookies: {},
+      localStorage: {},
+      sessionStorage: {},
+      history: [],
+      updatedAt: null,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.patch("/:id/browser-state", async (req, res, next) => {
+  try {
+    const incoming = req.body && typeof req.body === "object" ? req.body as Record<string, unknown> : {};
+    const browserState = {
+      cookies: incoming.cookies && typeof incoming.cookies === "object" ? incoming.cookies : {},
+      localStorage: incoming.localStorage && typeof incoming.localStorage === "object" ? incoming.localStorage : {},
+      sessionStorage: incoming.sessionStorage && typeof incoming.sessionStorage === "object" ? incoming.sessionStorage : {},
+      history: Array.isArray(incoming.history) ? incoming.history.slice(-250) : [],
+      updatedAt: new Date().toISOString(),
+    };
+
+    if (await useMongo()) {
+      const account = await AccountModel.findByIdAndUpdate(
+        req.params.id,
+        { $set: { browserState } },
+        { new: true },
+      );
+
+      if (!account) {
+        res.status(404).json({ message: "Account not found" });
+        return;
+      }
+
+      res.json(browserState);
+      return;
+    }
+
+    const account = memoryAccounts.get(req.params.id);
+    if (!account) {
+      res.status(404).json({ message: "Account not found" });
+      return;
+    }
+
+    account.browserState = browserState;
+    account.updatedAt = new Date().toISOString();
+    memoryAccounts.set(account.id, account);
+    res.json(browserState);
+  } catch (error) {
+    next(error);
+  }
+});
+
+
 router.get("/:id", async (req, res, next) => {
   try {
     if (await useMongo()) {
