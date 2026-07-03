@@ -11,6 +11,7 @@ const accountSchema = new Schema(
     cryptoAddress: { type: String, trim: true },
     deviceName: { type: String, trim: true },
     fakeIp: { type: String, trim: true },
+    timezone: { type: String, trim: true },
     proxyUrl: { type: String, trim: true },
     userAgent: { type: String },
     notes: { type: String },

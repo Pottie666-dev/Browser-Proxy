@@ -44,6 +44,7 @@ type VaultAccount = Account & {
   image2?: string | null;
   favorite?: boolean | null;
   tags?: string[] | null;
+  fingerprint?: Record<string, unknown> | null;
   createdAt?: string | null;
   updatedAt?: string | null;
 };
@@ -77,6 +78,24 @@ function getDeviceColor(deviceName: string | undefined | null, primary: string) 
   return primary;
 }
 
+function fingerprintTimezone(account: VaultAccount): string {
+  const value = account.fingerprint?.timezone;
+  return typeof value === "string" && value ? value : "Africa/Johannesburg";
+}
+
+function identityHealth(account: VaultAccount): { label: string; score: number } {
+  let score = 0;
+  if (account.deviceName) score += 20;
+  if (account.userAgent) score += 20;
+  if (account.fakeIp) score += 20;
+  if (account.fingerprint?.timezone) score += 20;
+  if (account.createdAt) score += 20;
+
+  if (score >= 80) return { label: "Trusted", score };
+  if (score >= 50) return { label: "Good", score };
+  return { label: "New", score };
+}
+
 function searchableText(account: VaultAccount): string {
   return [
     account.name,
@@ -88,6 +107,7 @@ function searchableText(account: VaultAccount): string {
     account.walletName,
     account.idNumber,
     account.cryptoAddress,
+    fingerprintTimezone(account),
     ...(account.tags ?? []),
   ]
     .filter(Boolean)
@@ -169,6 +189,8 @@ function AccountCard({
   const devColor = getDeviceColor(account.deviceName, colors.primary);
   const hasImages = Boolean(account.image1 || account.image2);
   const tags = account.tags ?? [];
+  const health = identityHealth(account);
+  const tz = fingerprintTimezone(account);
 
   return (
     <View style={[styles.card, { backgroundColor: colors.card, borderColor: account.favorite ? colors.primary : colors.border }]}>
@@ -212,6 +234,14 @@ function AccountCard({
                 <Text style={[styles.badgeText, { color: colors.mutedForeground }]}>{account.fakeIp}</Text>
               </View>
             ) : null}
+            <View style={[styles.badge, { backgroundColor: colors.primary + "12" }]} accessibilityLabel="Identity health">
+              <Feather name="shield" size={10} color={colors.primary} />
+              <Text style={[styles.badgeText, { color: colors.primary }]}>{health.label} {health.score}%</Text>
+            </View>
+            <View style={[styles.badge, { backgroundColor: colors.muted }]}>
+              <Feather name="clock" size={10} color={colors.mutedForeground} />
+              <Text style={[styles.badgeText, { color: colors.mutedForeground }]} numberOfLines={1}>{tz.replace("Africa/", "")}</Text>
+            </View>
           </View>
 
           {tags.length ? (
@@ -362,6 +392,7 @@ export default function AccountsScreen() {
         fakeIp: account.fakeIp ?? "",
         image1: account.image1 ?? "",
         image2: account.image2 ?? "",
+        fingerprintTimezone: fingerprintTimezone(account),
       },
     });
   }
@@ -381,6 +412,7 @@ export default function AccountsScreen() {
         cryptoAddress: account.cryptoAddress ?? "",
         image1: account.image1 ?? "",
         image2: account.image2 ?? "",
+        fingerprintTimezone: fingerprintTimezone(account),
       },
     });
   }

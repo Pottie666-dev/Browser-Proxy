@@ -21,7 +21,7 @@ const { WebView } = require("react-native-webview") as { WebView: React.Componen
 import type { WebViewNavigation } from "react-native-webview";
 
 import { useColors } from "@/hooks/useColors";
-import { buildFingerprintScript, buildFormInterceptScript } from "@/lib/fingerprint";
+import { buildFingerprintScript, buildFormInterceptScript, type FingerprintProfile } from "@/lib/fingerprint";
 
 const DEFAULT_URL = "https://www.google.com";
 
@@ -58,6 +58,7 @@ function extractTargetUrl(proxyUrl: string): string {
 }
 
 function CopyItem({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  const { fingerprintTimezone } = useLocalSearchParams<{ fingerprintTimezone?: string }>();
   const colors = useColors();
   const [copied, setCopied] = useState(false);
 
@@ -99,6 +100,7 @@ const debugStyles = StyleSheet.create({
 });
 
 export default function BrowserScreen() {
+  const { fingerprintTimezone } = useLocalSearchParams<{ fingerprintTimezone?: string }>();
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const webViewRef = useRef<any>(null);
@@ -130,6 +132,14 @@ export default function BrowserScreen() {
   const [canGoForward, setCanGoForward] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
+  const fingerprintProfile: FingerprintProfile = {
+    accountId: String(accountId ?? ""),
+    deviceName: String(deviceName ?? ""),
+    userAgent: String(userAgent ?? ""),
+    fakeIp: String(fakeIp ?? ""),
+    timezone: String(fingerprintTimezone ?? "") || undefined,
+  };
+
   const [showDebug, setShowDebug] = useState(false);
 
   const topInset = Platform.OS === "web" ? 67 : insets.top;
@@ -384,7 +394,7 @@ export default function BrowserScreen() {
           source={{ uri: currentProxyUrl }}
           style={styles.webView}
           userAgent={userAgent || undefined}
-          injectedJavaScriptBeforeContentLoaded={buildFingerprintScript() + '\n' + buildFormInterceptScript()}
+          injectedJavaScriptBeforeContentLoaded={buildFingerprintScript(fingerprintProfile) + '\n' + buildFormInterceptScript()}
           injectedJavaScriptForMainFrameOnly={false}
           onLoadStart={() => { setIsLoading(true); setLoadingProgress(0.1); }}
           onError={({ nativeEvent }: { nativeEvent: { description?: string } }) => {

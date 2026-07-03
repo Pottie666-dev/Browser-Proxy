@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { AccountModel } from "../lib/account-model";
 import { connectMongo, hasMongoUri } from "../lib/mongo";
+import { generateIdentity } from "../lib/identity";
 
 type Account = Record<string, unknown> & {
   id: string;
@@ -64,16 +65,37 @@ router.post("/", async (req, res, next) => {
   try {
     const body = cleanBody(req.body);
     const name = typeof body.name === "string" && body.name ? body.name : "New Account";
+    const identity = generateIdentity();
+
+    const bodyFingerprint = typeof body.fingerprint === "object" && body.fingerprint ? body.fingerprint as Record<string, unknown> : {};
+    const enrichedTimezone = typeof bodyFingerprint.timezone === "string" && bodyFingerprint.timezone
+      ? bodyFingerprint.timezone
+      : identity.fingerprint.timezone;
+
+    const enrichedBody = {
+      ...identity,
+      ...body,
+      fingerprint: {
+        ...identity.fingerprint,
+        ...bodyFingerprint,
+        timezone: enrichedTimezone,
+      },
+      timezone: enrichedTimezone,
+      name,
+      deviceName: typeof body.deviceName === "string" && body.deviceName ? body.deviceName : identity.deviceName,
+      fakeIp: typeof body.fakeIp === "string" && body.fakeIp ? body.fakeIp : identity.fakeIp,
+      userAgent: typeof body.userAgent === "string" && body.userAgent ? body.userAgent : identity.userAgent,
+    };
 
     if (await useMongo()) {
-      const account = await AccountModel.create({ ...body, name });
+      const account = await AccountModel.create(enrichedBody);
       res.status(201).json(account.toJSON());
       return;
     }
 
     const now = new Date().toISOString();
     const account: Account = {
-      ...body,
+      ...enrichedBody,
       id: makeId(),
       name,
       createdAt: now,
@@ -112,6 +134,10 @@ router.get("/:id", async (req, res, next) => {
 router.patch("/:id", async (req, res, next) => {
   try {
     const body = cleanBody(req.body);
+    const bodyFingerprint = typeof body.fingerprint === "object" && body.fingerprint ? body.fingerprint as Record<string, unknown> : {};
+    if (typeof bodyFingerprint.timezone === "string" && bodyFingerprint.timezone) {
+      body.timezone = bodyFingerprint.timezone;
+    }
 
     if (await useMongo()) {
       const account = await AccountModel.findByIdAndUpdate(

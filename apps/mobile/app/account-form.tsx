@@ -26,6 +26,16 @@ import {
 } from "@workspace/api-client-react";
 
 const EMAIL_DOMAINS = ["gmail.com", "outlook.com", "yahoo.com"];
+
+const TIMEZONES = [
+  { label: "South Africa", value: "Africa/Johannesburg", hint: "SAST · UTC+2" },
+  { label: "United Kingdom", value: "Europe/London", hint: "London" },
+  { label: "Ireland", value: "Europe/Dublin", hint: "Dublin" },
+  { label: "Dubai", value: "Asia/Dubai", hint: "GST · UTC+4" },
+  { label: "Sydney", value: "Australia/Sydney", hint: "AEST/AEDT" },
+  { label: "United States", value: "America/New_York", hint: "Eastern" },
+];
+
 const NATURE_WORDS = [
   "rock","tree","river","cloud","stone","leaf","fire","snow","wind","lake",
   "moon","wave","peak","oak","fog","ash","vale","bay","cove","reef","dusk",
@@ -224,7 +234,7 @@ export default function AccountFormScreen() {
     accountId?: string; name?: string; surname?: string;
     email?: string; password?: string; walletName?: string;
     username?: string; idNumber?: string; cryptoAddress?: string;
-    image1?: string; image2?: string;
+    image1?: string; image2?: string; fingerprintTimezone?: string;
   }>();
   const isEdit = !!params.accountId;
 
@@ -238,6 +248,7 @@ export default function AccountFormScreen() {
   const [walletName] = useState(params.walletName ?? "");
   const [image1, setImage1] = useState<string | null>(params.image1 || null);
   const [image2, setImage2] = useState<string | null>(params.image2 || null);
+  const [timezone, setTimezone] = useState(params.fingerprintTimezone || "Africa/Johannesburg");
 
   const [usernameManual, setUsernameManual] = useState(isEdit);
   const [passwordManual, setPasswordManual] = useState(isEdit);
@@ -289,6 +300,9 @@ export default function AccountFormScreen() {
       cryptoAddress: cryptoAddress.trim() || null,
       image1: image1 ?? null,
       image2: image2 ?? null,
+      fingerprint: {
+        timezone,
+      },
     };
 
     if (isEdit && params.accountId) {
@@ -388,6 +402,37 @@ export default function AccountFormScreen() {
           />
         </Section>
 
+        {/* LOCATION */}
+        <Section label="LOCATION / TIMEZONE">
+          <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground, lineHeight: 17, marginBottom: 10 }}>
+            Choose the timezone this account should consistently appear from. Use South Africa when all accounts must look local.
+          </Text>
+          <View style={styles.timezoneGrid}>
+            {TIMEZONES.map((tz) => {
+              const active = timezone === tz.value;
+              return (
+                <Pressable
+                  key={tz.value}
+                  onPress={() => {
+                    setTimezone(tz.value);
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  }}
+                  style={[
+                    styles.timezoneChip,
+                    {
+                      backgroundColor: active ? colors.primary : colors.background,
+                      borderColor: active ? colors.primary : colors.border,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.timezoneLabel, { color: active ? colors.primaryForeground : colors.foreground }]}>{tz.label}</Text>
+                  <Text style={[styles.timezoneHint, { color: active ? colors.primaryForeground : colors.mutedForeground }]}>{tz.hint}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </Section>
+
         {/* CRYPTO */}
         <Section label="CRYPTO WALLET">
           <FieldRow
@@ -436,6 +481,10 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 17, fontFamily: "Inter_600SemiBold" },
   backBtn: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   content: { paddingHorizontal: 16, paddingTop: 12, gap: 14 },
+  timezoneGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  timezoneChip: { width: "48%", minHeight: 54, borderRadius: 12, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 8, justifyContent: "center" },
+  timezoneLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  timezoneHint: { fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 2 },
   infoCard: { flexDirection: "row", alignItems: "flex-start", gap: 10, padding: 14, borderRadius: 12, borderWidth: 1 },
   infoText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 18 },
   submitBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 16, borderRadius: 14, marginTop: 4 },
