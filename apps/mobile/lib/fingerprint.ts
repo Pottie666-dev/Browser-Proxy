@@ -44,18 +44,49 @@ export type FingerprintProfile = {
     rtt?: number;
     saveData?: boolean;
   };
+
+  geolocation?: {
+    latitude?: number;
+    longitude?: number;
+    accuracy?: number;
+  };
 };
 
 function safeJson(value: unknown): string {
   return JSON.stringify(value).replace(/</g, "\\u003c");
 }
 
+function defaultGeo(timezone: string | undefined) {
+  switch (timezone) {
+    case "Africa/Johannesburg":
+      return { latitude: -26.2041, longitude: 28.0473, accuracy: 220 };
+    case "Europe/London":
+      return { latitude: 51.5072, longitude: -0.1276, accuracy: 180 };
+    case "Europe/Dublin":
+      return { latitude: 53.3498, longitude: -6.2603, accuracy: 180 };
+    case "Asia/Dubai":
+      return { latitude: 25.2048, longitude: 55.2708, accuracy: 220 };
+    case "Australia/Sydney":
+      return { latitude: -33.8688, longitude: 151.2093, accuracy: 240 };
+    case "America/New_York":
+      return { latitude: 40.7128, longitude: -74.006, accuracy: 210 };
+    default:
+      return { latitude: -26.2041, longitude: 28.0473, accuracy: 250 };
+  }
+}
+
 export function buildFingerprintScript(profile: FingerprintProfile = {}) {
+  const geo = {
+    ...defaultGeo(profile.timezone),
+    ...(profile.geolocation ?? {}),
+  };
+
   const merged = {
     profileId: profile.profileId ?? "local",
     generatedAt: profile.generatedAt ?? new Date(0).toISOString(),
 
     accountId: profile.accountId ?? "local",
+    storageNamespace: `bp:${profile.accountId ?? "local"}:`,
     deviceName: profile.deviceName ?? "Samsung Galaxy S23",
     userAgent:
       profile.userAgent ??
@@ -99,6 +130,8 @@ export function buildFingerprintScript(profile: FingerprintProfile = {}) {
       rtt: profile.network?.rtt ?? 80,
       saveData: profile.network?.saveData ?? false,
     },
+
+    geolocation: geo,
   };
 
   return `
@@ -114,6 +147,26 @@ export function buildFingerprintScript(profile: FingerprintProfile = {}) {
     } catch (e) {}
   }
 
+  function defineValue(target, key, value) {
+    try {
+      Object.defineProperty(target, key, {
+        value,
+        writable: false,
+        configurable: true
+      });
+    } catch (e) {}
+  }
+
+  function namespaceKey(key) {
+    return profile.storageNamespace + String(key);
+  }
+
+  function unnamespaceKey(key) {
+    key = String(key);
+    return key.indexOf(profile.storageNamespace) === 0 ? key.slice(profile.storageNamespace.length) : null;
+  }
+
+  // Core navigator/device identity
   defineGetter(Navigator.prototype, "userAgent", profile.userAgent);
   defineGetter(Navigator.prototype, "platform", profile.platform);
   defineGetter(Navigator.prototype, "vendor", profile.vendor);
@@ -122,15 +175,20 @@ export function buildFingerprintScript(profile: FingerprintProfile = {}) {
   defineGetter(Navigator.prototype, "hardwareConcurrency", profile.hardwareConcurrency);
   defineGetter(Navigator.prototype, "deviceMemory", profile.deviceMemory);
   defineGetter(Navigator.prototype, "maxTouchPoints", 5);
+  defineGetter(Navigator.prototype, "doNotTrack", null);
 
+  // Screen profile
   try {
     defineGetter(Screen.prototype, "width", profile.screenWidth);
     defineGetter(Screen.prototype, "height", profile.screenHeight);
     defineGetter(Screen.prototype, "availWidth", profile.screenWidth);
     defineGetter(Screen.prototype, "availHeight", profile.screenHeight - 24);
+    defineGetter(window, "innerWidth", profile.screenWidth);
+    defineGetter(window, "innerHeight", profile.screenHeight);
     defineGetter(window, "devicePixelRatio", profile.pixelRatio);
   } catch (e) {}
 
+  // Timezone/locale
   try {
     const realResolvedOptions = Intl.DateTimeFormat.prototype.resolvedOptions;
     Intl.DateTimeFormat.prototype.resolvedOptions = function() {
@@ -141,6 +199,94 @@ export function buildFingerprintScript(profile: FingerprintProfile = {}) {
     };
   } catch (e) {}
 
+  // Account-scoped localStorage/sessionStorage namespace.
+  // This prevents two identities on the same website from seeing each other's normal JS storage.
+  try {
+    function patchStorage(storage) {
+      const getItem = storage.getItem.bind(storage);
+      const setItem = storage.setItem.bind(storage);
+      const removeItem = storage.removeItem.bind(storage);
+      const clear = storage.clear.bind(storage);
+      const key = storage.key.bind(storage);
+
+      storage.getItem = function(k) { return getItem(namespaceKey(k)); };
+      storage.setItem = function(k, v) { return setItem(namespaceKey(k), String(v)); };
+      storage.removeItem = function(k) { return removeItem(namespaceKey(k)); };
+      storage.clear = function() {
+        const keys = [];
+        for (let i = 0; i < storage.length; i++) {
+          const raw = key(i);
+          if (raw && raw.indexOf(profile.storageNamespace) === 0) keys.push(raw);
+        }
+        keys.forEach(removeItem);
+      };
+      storage.key = function(i) {
+        const visible = [];
+        for (let n = 0; n < storage.length; n++) {
+          const raw = key(n);
+          const clean = raw ? unnamespaceKey(raw) : null;
+          if (clean !== null) visible.push(clean);
+        }
+        return visible[i] || null;
+      };
+      try {
+        Object.defineProperty(storage, "length", {
+          get: function() {
+            let count = 0;
+            for (let n = 0; n < storage.length; n++) {
+              const raw = key(n);
+              if (raw && raw.indexOf(profile.storageNamespace) === 0) count++;
+            }
+            return count;
+          },
+          configurable: true
+        });
+      } catch (e) {}
+    }
+
+    patchStorage(window.localStorage);
+    patchStorage(window.sessionStorage);
+  } catch (e) {}
+
+  // JS-visible cookie namespace. Native HTTP-only cookie jars will be handled in a later native phase.
+  try {
+    const cookieStoreKey = profile.storageNamespace + "__cookies__";
+
+    function parseCookieJar() {
+      try { return JSON.parse(window.localStorage.getItem(cookieStoreKey) || "{}"); }
+      catch (e) { return {}; }
+    }
+
+    function saveCookieJar(jar) {
+      window.localStorage.setItem(cookieStoreKey, JSON.stringify(jar));
+    }
+
+    Object.defineProperty(document, "cookie", {
+      get: function() {
+        const jar = parseCookieJar();
+        return Object.keys(jar).map(function(k) { return k + "=" + jar[k]; }).join("; ");
+      },
+      set: function(value) {
+        const jar = parseCookieJar();
+        const first = String(value).split(";")[0] || "";
+        const eq = first.indexOf("=");
+        if (eq > 0) {
+          const name = first.slice(0, eq).trim();
+          const val = first.slice(eq + 1).trim();
+          if (/max-age=0|expires=thu, 01 jan 1970/i.test(String(value))) {
+            delete jar[name];
+          } else {
+            jar[name] = val;
+          }
+          saveCookieJar(jar);
+        }
+        return value;
+      },
+      configurable: true
+    });
+  } catch (e) {}
+
+  // WebGL
   try {
     const getParameter = WebGLRenderingContext.prototype.getParameter;
     WebGLRenderingContext.prototype.getParameter = function(parameter) {
@@ -158,6 +304,7 @@ export function buildFingerprintScript(profile: FingerprintProfile = {}) {
     };
   } catch (e) {}
 
+  // Canvas
   try {
     const toDataURL = HTMLCanvasElement.prototype.toDataURL;
     HTMLCanvasElement.prototype.toDataURL = function() {
@@ -174,6 +321,7 @@ export function buildFingerprintScript(profile: FingerprintProfile = {}) {
     };
   } catch (e) {}
 
+  // Audio
   try {
     const getChannelData = AudioBuffer.prototype.getChannelData;
     AudioBuffer.prototype.getChannelData = function() {
@@ -185,6 +333,7 @@ export function buildFingerprintScript(profile: FingerprintProfile = {}) {
     };
   } catch (e) {}
 
+  // Battery
   try {
     navigator.getBattery = function() {
       return Promise.resolve({
@@ -199,6 +348,7 @@ export function buildFingerprintScript(profile: FingerprintProfile = {}) {
     };
   } catch (e) {}
 
+  // Network
   try {
     const connection = {
       effectiveType: profile.network.effectiveType,
@@ -212,10 +362,126 @@ export function buildFingerprintScript(profile: FingerprintProfile = {}) {
     defineGetter(Navigator.prototype, "connection", connection);
   } catch (e) {}
 
+  // Permissions
   try {
-    document.fonts && profile.fonts.forEach(function(font) {
-      window.__BROWSER_PROXY_FONTS__ = profile.fonts;
-    });
+    const permissionStates = {
+      geolocation: "granted",
+      notifications: "default",
+      camera: "prompt",
+      microphone: "prompt",
+      midi: "denied",
+      clipboard: "granted"
+    };
+
+    navigator.permissions = navigator.permissions || {};
+    navigator.permissions.query = function(desc) {
+      const name = desc && desc.name ? String(desc.name) : "";
+      const state = permissionStates[name] || "prompt";
+      return Promise.resolve({
+        state: state,
+        name: name,
+        onchange: null,
+        addEventListener: function(){},
+        removeEventListener: function(){},
+        dispatchEvent: function(){ return false; }
+      });
+    };
+  } catch (e) {}
+
+  // Geolocation matching timezone
+  try {
+    const position = {
+      coords: {
+        latitude: profile.geolocation.latitude,
+        longitude: profile.geolocation.longitude,
+        accuracy: profile.geolocation.accuracy,
+        altitude: null,
+        altitudeAccuracy: null,
+        heading: null,
+        speed: null
+      },
+      timestamp: Date.now()
+    };
+
+    navigator.geolocation = navigator.geolocation || {};
+    navigator.geolocation.getCurrentPosition = function(success) {
+      if (typeof success === "function") setTimeout(function() { success(position); }, 80);
+    };
+    navigator.geolocation.watchPosition = function(success) {
+      if (typeof success === "function") setTimeout(function() { success(position); }, 80);
+      return 1;
+    };
+    navigator.geolocation.clearWatch = function(){};
+  } catch (e) {}
+
+  // WebRTC leak protection
+  try {
+    const BlockedPeerConnection = function() {
+      throw new Error("RTCPeerConnection disabled by Browser-Proxy identity isolation");
+    };
+    defineValue(window, "RTCPeerConnection", BlockedPeerConnection);
+    defineValue(window, "webkitRTCPeerConnection", BlockedPeerConnection);
+    defineValue(window, "mozRTCPeerConnection", BlockedPeerConnection);
+  } catch (e) {}
+
+  // Media devices
+  try {
+    const devices = [
+      { deviceId: "bp-front-camera-" + profile.profileId, groupId: "bp-camera", kind: "videoinput", label: "" },
+      { deviceId: "bp-mic-" + profile.profileId, groupId: "bp-mic", kind: "audioinput", label: "" },
+      { deviceId: "bp-speaker-" + profile.profileId, groupId: "bp-speaker", kind: "audiooutput", label: "" }
+    ];
+
+    navigator.mediaDevices = navigator.mediaDevices || {};
+    navigator.mediaDevices.enumerateDevices = function() {
+      return Promise.resolve(devices);
+    };
+    navigator.mediaDevices.getUserMedia = function() {
+      return Promise.reject(new DOMException("Permission denied", "NotAllowedError"));
+    };
+  } catch (e) {}
+
+  // Notifications
+  try {
+    defineGetter(Notification, "permission", "default");
+    Notification.requestPermission = function() { return Promise.resolve("default"); };
+  } catch (e) {}
+
+  // Clipboard
+  try {
+    navigator.clipboard = navigator.clipboard || {};
+    navigator.clipboard.readText = function() { return Promise.resolve(""); };
+    navigator.clipboard.writeText = function() { return Promise.resolve(); };
+  } catch (e) {}
+
+  // Voices
+  try {
+    speechSynthesis.getVoices = function() {
+      return [
+        { voiceURI: "Google UK English Female", name: "Google UK English Female", lang: "en-GB", localService: false, default: profile.locale === "en-GB" },
+        { voiceURI: "Google US English", name: "Google US English", lang: "en-US", localService: false, default: profile.locale === "en-US" },
+        { voiceURI: "Google English South Africa", name: "Google English South Africa", lang: "en-ZA", localService: false, default: profile.locale === "en-ZA" }
+      ];
+    };
+  } catch (e) {}
+
+  // Plugins/mimeTypes
+  try {
+    const plugins = [
+      { name: "Chrome PDF Plugin", filename: "internal-pdf-viewer", description: "Portable Document Format" },
+      { name: "Chrome PDF Viewer", filename: "mhjfbmdgcfjbbpaeojofohoefgiehjai", description: "" }
+    ];
+    defineGetter(Navigator.prototype, "plugins", plugins);
+    defineGetter(Navigator.prototype, "mimeTypes", [{ type: "application/pdf", suffixes: "pdf", description: "Portable Document Format" }]);
+  } catch (e) {}
+
+  // Hide hardware APIs that would expose host device details.
+  try {
+    defineValue(navigator, "bluetooth", undefined);
+    defineValue(navigator, "usb", undefined);
+    defineValue(navigator, "serial", undefined);
+    defineValue(navigator, "hid", undefined);
+    defineValue(navigator, "nfc", undefined);
   } catch (e) {}
 
   window.__BROWSER_PROXY_PROFILE__ = profile;
