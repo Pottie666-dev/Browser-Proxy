@@ -6,6 +6,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import {
   ActivityIndicator,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -25,6 +26,32 @@ import { buildFingerprintScript, buildFormInterceptScript, type FingerprintProfi
 import { buildBrowserStateCaptureScript, buildBrowserStateRestoreScript, type BrowserState } from "@/lib/browser-state";
 
 const DEFAULT_URL = "https://www.google.com";
+
+type BrowserTab = {
+  id: string;
+  title: string;
+  url: string;
+};
+
+type Bookmark = {
+  id: string;
+  title: string;
+  url: string;
+  createdAt: string;
+};
+
+function makeLocalId(prefix: string): string {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function pageTitleFromUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    return parsed.hostname.replace(/^www\./, "");
+  } catch {
+    return url || "New Tab";
+  }
+}
 
 function getApiBaseUrl(): string {
   const rawBase =
@@ -101,7 +128,6 @@ const debugStyles = StyleSheet.create({
 });
 
 export default function BrowserScreen() {
-  const { fingerprintTimezone, fingerprintProfileJson } = useLocalSearchParams<{ fingerprintTimezone?: string; fingerprintProfileJson?: string }>();
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const webViewRef = useRef<any>(null);
@@ -115,6 +141,8 @@ export default function BrowserScreen() {
     fakeIp?: string;
     image1?: string;
     image2?: string;
+    fingerprintTimezone?: string;
+    fingerprintProfileJson?: string;
   }>();
 
   const accountId = params.accountId ?? "";
@@ -125,6 +153,8 @@ export default function BrowserScreen() {
   const fakeIp = params.fakeIp ?? "";
   const image1 = params.image1 || null;
   const image2 = params.image2 || null;
+  const fingerprintTimezone = params.fingerprintTimezone;
+  const fingerprintProfileJson = params.fingerprintProfileJson;
 
   const [addressBarText, setAddressBarText] = useState(DEFAULT_URL);
   const [currentProxyUrl, setCurrentProxyUrl] = useState(buildProxyUrl(DEFAULT_URL, accountId));
@@ -133,6 +163,14 @@ export default function BrowserScreen() {
   const [canGoForward, setCanGoForward] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
+  const [tabs, setTabs] = useState<BrowserTab[]>([
+    { id: makeLocalId("tab"), title: "Google", url: DEFAULT_URL },
+  ]);
+  const [activeTabId, setActiveTabId] = useState<string>("");
+  const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [bookmarksOpen, setBookmarksOpen] = useState(false);
   const storedFingerprintProfile: FingerprintProfile = (() => {
     try {
       const raw = typeof fingerprintProfileJson === "string" ? fingerprintProfileJson : "";
@@ -158,6 +196,10 @@ export default function BrowserScreen() {
   const topInset = Platform.OS === "web" ? 67 : insets.top;
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
 
+  useEffect(() => {
+    setActiveTabId((current) => current || tabs[0]?.id || "");
+  }, [tabs]);
+
   function navigate(input: string) {
     setIsEditing(false);
     setShowDebug(false);
@@ -170,19 +212,34 @@ export default function BrowserScreen() {
     }
     const proxyUrl = buildProxyUrl(url, accountId);
     setAddressBarText(url);
+    setTabs((current) =>
+      current.map((tab) =>
+        tab.id === activeTabId ? { ...tab, url, title: pageTitleFromUrl(url) } : tab,
+      ),
+    );
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setCurrentProxyUrl(proxyUrl);
   }
 
   const saveBrowserState = useCallback(async (nextState: BrowserState) => {
     if (!accountId || !apiBaseUrl) return;
-    setBrowserState(nextState);
+    const merged: BrowserState = {
+      cookies: { ...(browserState?.cookies ?? {}), ...(nextState.cookies ?? {}) },
+      localStorage: { ...(browserState?.localStorage ?? {}), ...(nextState.localStorage ?? {}) },
+      sessionStorage: { ...(browserState?.sessionStorage ?? {}), ...(nextState.sessionStorage ?? {}) },
+      history: [
+        ...(nextState.history ?? []),
+        ...(browserState?.history ?? []),
+      ].filter((item, index, arr) => arr.findIndex((other) => other.url === item.url && other.title === item.title) === index).slice(0, 250),
+      updatedAt: new Date().toISOString(),
+    };
+    setBrowserState(merged);
     await fetch(`${apiBaseUrl}/api/accounts/${encodeURIComponent(accountId)}/browser-state`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(nextState),
+      body: JSON.stringify(merged),
     }).catch(() => {});
-  }, [accountId, apiBaseUrl]);
+  }, [accountId, apiBaseUrl, browserState]);
 
   const handleWebMessage = useCallback((event: { nativeEvent?: { data?: string } }) => {
     try {
@@ -190,6 +247,53 @@ export default function BrowserScreen() {
       if (msg?.type === "BROWSER_PROXY_STATE") saveBrowserState(msg.state as BrowserState);
     } catch {}
   }, [saveBrowserState]);
+
+  function openNewTab(url = DEFAULT_URL) {
+    const tab: BrowserTab = { id: makeLocalId("tab"), title: pageTitleFromUrl(url), url };
+    setTabs((current) => [...current, tab]);
+    setActiveTabId(tab.id);
+    navigate(url);
+    setMenuOpen(false);
+  }
+
+  function closeTab(id: string) {
+    setTabs((current) => {
+      if (current.length <= 1) return current;
+      const next = current.filter((tab) => tab.id !== id);
+      if (activeTabId === id) {
+        const replacement = next[next.length - 1];
+        if (replacement) {
+          setActiveTabId(replacement.id);
+          setAddressBarText(replacement.url);
+          setCurrentProxyUrl(buildProxyUrl(replacement.url, accountId));
+        }
+      }
+      return next;
+    });
+  }
+
+  function switchTab(tab: BrowserTab) {
+    setActiveTabId(tab.id);
+    setAddressBarText(tab.url);
+    setCurrentProxyUrl(buildProxyUrl(tab.url, accountId));
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }
+
+  function addBookmark() {
+    const url = addressBarText || DEFAULT_URL;
+    const bookmark: Bookmark = {
+      id: makeLocalId("bookmark"),
+      title: pageTitleFromUrl(url),
+      url,
+      createdAt: new Date().toISOString(),
+    };
+    setBookmarks((current) => {
+      if (current.some((item) => item.url === bookmark.url)) return current;
+      return [bookmark, ...current].slice(0, 100);
+    });
+    setMenuOpen(false);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  }
 
   const onNavigationStateChange = useCallback(
     (navState: WebViewNavigation) => {
@@ -199,10 +303,15 @@ export default function BrowserScreen() {
         const target = extractTargetUrl(navState.url);
         if (target && target !== currentProxyUrl) {
           setAddressBarText(target);
+          setTabs((current) =>
+            current.map((tab) =>
+              tab.id === activeTabId ? { ...tab, url: target, title: navState.title || pageTitleFromUrl(target) } : tab,
+            ),
+          );
         }
       }
     },
-    [isEditing, currentProxyUrl]
+    [isEditing, currentProxyUrl, activeTabId]
   );
 
   const onShouldStartLoadWithRequest = useCallback(
@@ -331,7 +440,47 @@ export default function BrowserScreen() {
               color={showDebug ? colors.primary : colors.mutedForeground}
             />
           </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setMenuOpen(true)}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+            style={[styles.debugToggle, { backgroundColor: colors.muted }]}
+          >
+            <Feather name="more-horizontal" size={16} color={colors.mutedForeground} />
+          </TouchableOpacity>
         </View>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsRow} contentContainerStyle={styles.tabsContent}>
+          {tabs.map((tab) => {
+            const active = tab.id === activeTabId;
+            return (
+              <Pressable
+                key={tab.id}
+                onPress={() => switchTab(tab)}
+                style={[
+                  styles.tabChip,
+                  {
+                    backgroundColor: active ? colors.primary + "18" : colors.muted,
+                    borderColor: active ? colors.primary : colors.border,
+                  },
+                ]}
+              >
+                <Feather name="globe" size={11} color={active ? colors.primary : colors.mutedForeground} />
+                <Text style={[styles.tabTitle, { color: active ? colors.primary : colors.foreground }]} numberOfLines={1}>
+                  {tab.title}
+                </Text>
+                {tabs.length > 1 ? (
+                  <Pressable onPress={() => closeTab(tab.id)} hitSlop={8}>
+                    <Feather name="x" size={11} color={colors.mutedForeground} />
+                  </Pressable>
+                ) : null}
+              </Pressable>
+            );
+          })}
+          <Pressable onPress={() => openNewTab()} style={[styles.tabAdd, { backgroundColor: colors.muted }]}>
+            <Feather name="plus" size={14} color={colors.mutedForeground} />
+          </Pressable>
+        </ScrollView>
 
         {isLoading && (
           <View
@@ -400,6 +549,73 @@ export default function BrowserScreen() {
           </ScrollView>
         </View>
       )}
+
+      {/* Browser menu modal */}
+      <Modal visible={menuOpen} transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setMenuOpen(false)}>
+          <Pressable style={[styles.menuCard, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={(e) => e.stopPropagation()}>
+            <Text style={[styles.menuTitle, { color: colors.foreground }]}>Browser Tools</Text>
+            <Pressable style={styles.menuRow} onPress={() => openNewTab()}>
+              <Feather name="plus-square" size={17} color={colors.primary} />
+              <Text style={[styles.menuText, { color: colors.foreground }]}>New tab</Text>
+            </Pressable>
+            <Pressable style={styles.menuRow} onPress={addBookmark}>
+              <Feather name="bookmark" size={17} color={colors.primary} />
+              <Text style={[styles.menuText, { color: colors.foreground }]}>Bookmark this page</Text>
+            </Pressable>
+            <Pressable style={styles.menuRow} onPress={() => { setHistoryOpen(true); setMenuOpen(false); }}>
+              <Feather name="clock" size={17} color={colors.primary} />
+              <Text style={[styles.menuText, { color: colors.foreground }]}>History</Text>
+            </Pressable>
+            <Pressable style={styles.menuRow} onPress={() => { setBookmarksOpen(true); setMenuOpen(false); }}>
+              <Feather name="book-open" size={17} color={colors.primary} />
+              <Text style={[styles.menuText, { color: colors.foreground }]}>Bookmarks</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal visible={historyOpen} transparent animationType="slide" onRequestClose={() => setHistoryOpen(false)}>
+        <View style={[styles.drawer, { backgroundColor: colors.card, borderColor: colors.border, paddingBottom: bottomInset + 12 }]}>
+          <View style={styles.drawerHeader}>
+            <Text style={[styles.drawerTitle, { color: colors.foreground }]}>History</Text>
+            <Pressable onPress={() => setHistoryOpen(false)} hitSlop={10}>
+              <Feather name="x" size={20} color={colors.mutedForeground} />
+            </Pressable>
+          </View>
+          <ScrollView>
+            {(browserState?.history ?? []).length ? (browserState?.history ?? []).map((item, index) => (
+              <Pressable key={`${item.url}-${index}`} style={[styles.drawerItem, { borderBottomColor: colors.border }]} onPress={() => { setHistoryOpen(false); navigate(item.url); }}>
+                <Text style={[styles.drawerItemTitle, { color: colors.foreground }]} numberOfLines={1}>{item.title || pageTitleFromUrl(item.url)}</Text>
+                <Text style={[styles.drawerItemSub, { color: colors.mutedForeground }]} numberOfLines={1}>{item.url}</Text>
+              </Pressable>
+            )) : (
+              <Text style={[styles.drawerEmpty, { color: colors.mutedForeground }]}>No history captured yet.</Text>
+            )}
+          </ScrollView>
+        </View>
+      </Modal>
+
+      <Modal visible={bookmarksOpen} transparent animationType="slide" onRequestClose={() => setBookmarksOpen(false)}>
+        <View style={[styles.drawer, { backgroundColor: colors.card, borderColor: colors.border, paddingBottom: bottomInset + 12 }]}>
+          <View style={styles.drawerHeader}>
+            <Text style={[styles.drawerTitle, { color: colors.foreground }]}>Bookmarks</Text>
+            <Pressable onPress={() => setBookmarksOpen(false)} hitSlop={10}>
+              <Feather name="x" size={20} color={colors.mutedForeground} />
+            </Pressable>
+          </View>
+          <ScrollView>
+            {bookmarks.length ? bookmarks.map((item) => (
+              <Pressable key={item.id} style={[styles.drawerItem, { borderBottomColor: colors.border }]} onPress={() => { setBookmarksOpen(false); navigate(item.url); }}>
+                <Text style={[styles.drawerItemTitle, { color: colors.foreground }]} numberOfLines={1}>{item.title}</Text>
+                <Text style={[styles.drawerItemSub, { color: colors.mutedForeground }]} numberOfLines={1}>{item.url}</Text>
+              </Pressable>
+            )) : (
+              <Text style={[styles.drawerEmpty, { color: colors.mutedForeground }]}>No bookmarks yet.</Text>
+            )}
+          </ScrollView>
+        </View>
+      </Modal>
 
       {/* WebView or web fallback */}
       {Platform.OS === "web" ? (
@@ -476,6 +692,11 @@ const styles = StyleSheet.create({
   navRow: { flexDirection: "row", alignItems: "center", gap: 14, paddingHorizontal: 4 },
   accountBadge: { flex: 1, flexDirection: "row", alignItems: "center", gap: 4 },
   accountLabel: { fontSize: 12, fontFamily: "Inter_500Medium", maxWidth: 140 },
+  tabsRow: { marginTop: 2 },
+  tabsContent: { gap: 6, paddingRight: 8 },
+  tabChip: { maxWidth: 150, height: 30, borderRadius: 9, borderWidth: 1, paddingHorizontal: 8, flexDirection: "row", alignItems: "center", gap: 5 },
+  tabTitle: { maxWidth: 100, fontSize: 11, fontFamily: "Inter_600SemiBold" },
+  tabAdd: { width: 30, height: 30, borderRadius: 9, alignItems: "center", justifyContent: "center" },
   debugToggle: { width: 30, height: 30, borderRadius: 8, alignItems: "center", justifyContent: "center" },
   progressBar: { position: "absolute", bottom: 0, left: 0, height: 2, borderRadius: 1 },
   debugPanel: {
@@ -507,6 +728,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, borderWidth: 1, marginTop: 8,
   },
   debugPillText: { fontSize: 11, fontFamily: "Inter_400Regular", maxWidth: 260 },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end", padding: 16 },
+  menuCard: { borderRadius: 18, borderWidth: 1, padding: 16, gap: 4 },
+  menuTitle: { fontSize: 16, fontFamily: "Inter_700Bold", marginBottom: 8 },
+  menuRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12 },
+  menuText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  drawer: { position: "absolute", left: 0, right: 0, bottom: 0, maxHeight: "72%", borderTopLeftRadius: 20, borderTopRightRadius: 20, borderWidth: 1, paddingTop: 14, paddingHorizontal: 16 },
+  drawerHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingBottom: 12 },
+  drawerTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  drawerItem: { paddingVertical: 12, borderBottomWidth: 1 },
+  drawerItemTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  drawerItemSub: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 3 },
+  drawerEmpty: { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center", paddingVertical: 40 },
   bottomBar: {
     borderTopWidth: 1, paddingTop: 8, paddingHorizontal: 16, paddingBottom: 8, alignItems: "center",
   },
