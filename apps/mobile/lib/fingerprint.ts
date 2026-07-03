@@ -13,10 +13,22 @@ export type FingerprintProfile = {
 
   platform?: string;
   vendor?: string;
+  brand?: string;
+  model?: string;
+  product?: string;
+  productSub?: string;
+  appName?: string;
+  appCodeName?: string;
+  maxTouchPoints?: number;
 
   screenWidth?: number;
   screenHeight?: number;
+  availWidth?: number;
+  availHeight?: number;
   pixelRatio?: number;
+  colorDepth?: number;
+  orientationType?: string;
+  orientationAngle?: number;
 
   hardwareConcurrency?: number;
   deviceMemory?: number;
@@ -36,9 +48,11 @@ export type FingerprintProfile = {
     level?: number;
     chargingTime?: number;
     dischargingTime?: number;
+    driftPerHour?: number;
   };
 
   network?: {
+    type?: "cellular" | "wifi";
     effectiveType?: "3g" | "4g" | "5g";
     downlink?: number;
     rtt?: number;
@@ -49,6 +63,12 @@ export type FingerprintProfile = {
     latitude?: number;
     longitude?: number;
     accuracy?: number;
+  };
+
+  mediaDevices?: {
+    cameraCount?: number;
+    microphoneCount?: number;
+    speakerCount?: number;
   };
 };
 
@@ -99,10 +119,22 @@ export function buildFingerprintScript(profile: FingerprintProfile = {}) {
 
     platform: profile.platform ?? "Linux armv8l",
     vendor: profile.vendor ?? "Google Inc.",
+    brand: profile.brand ?? "Samsung",
+    model: profile.model ?? "SM-S911B",
+    product: profile.product ?? "Gecko",
+    productSub: profile.productSub ?? "20030107",
+    appName: profile.appName ?? "Netscape",
+    appCodeName: profile.appCodeName ?? "Mozilla",
+    maxTouchPoints: profile.maxTouchPoints ?? 5,
 
     screenWidth: profile.screenWidth ?? 360,
     screenHeight: profile.screenHeight ?? 780,
+    availWidth: profile.availWidth ?? profile.screenWidth ?? 360,
+    availHeight: profile.availHeight ?? ((profile.screenHeight ?? 780) - 24),
     pixelRatio: profile.pixelRatio ?? 3,
+    colorDepth: profile.colorDepth ?? 24,
+    orientationType: profile.orientationType ?? "portrait-primary",
+    orientationAngle: profile.orientationAngle ?? 0,
 
     hardwareConcurrency: profile.hardwareConcurrency ?? 8,
     deviceMemory: profile.deviceMemory ?? 8,
@@ -122,9 +154,11 @@ export function buildFingerprintScript(profile: FingerprintProfile = {}) {
       level: profile.battery?.level ?? 0.76,
       chargingTime: profile.battery?.chargingTime ?? 0,
       dischargingTime: profile.battery?.dischargingTime ?? 14400,
+      driftPerHour: profile.battery?.driftPerHour ?? 0.03,
     },
 
     network: {
+      type: profile.network?.type ?? "cellular",
       effectiveType: profile.network?.effectiveType ?? "4g",
       downlink: profile.network?.downlink ?? 7.5,
       rtt: profile.network?.rtt ?? 80,
@@ -132,6 +166,12 @@ export function buildFingerprintScript(profile: FingerprintProfile = {}) {
     },
 
     geolocation: geo,
+
+    mediaDevices: {
+      cameraCount: profile.mediaDevices?.cameraCount ?? 2,
+      microphoneCount: profile.mediaDevices?.microphoneCount ?? 1,
+      speakerCount: profile.mediaDevices?.speakerCount ?? 1,
+    },
   };
 
   return `
@@ -170,22 +210,52 @@ export function buildFingerprintScript(profile: FingerprintProfile = {}) {
   defineGetter(Navigator.prototype, "userAgent", profile.userAgent);
   defineGetter(Navigator.prototype, "platform", profile.platform);
   defineGetter(Navigator.prototype, "vendor", profile.vendor);
+  defineGetter(Navigator.prototype, "product", profile.product);
+  defineGetter(Navigator.prototype, "productSub", profile.productSub);
+  defineGetter(Navigator.prototype, "appName", profile.appName);
+  defineGetter(Navigator.prototype, "appCodeName", profile.appCodeName);
   defineGetter(Navigator.prototype, "language", profile.locale);
   defineGetter(Navigator.prototype, "languages", profile.languages);
   defineGetter(Navigator.prototype, "hardwareConcurrency", profile.hardwareConcurrency);
   defineGetter(Navigator.prototype, "deviceMemory", profile.deviceMemory);
-  defineGetter(Navigator.prototype, "maxTouchPoints", 5);
+  defineGetter(Navigator.prototype, "maxTouchPoints", profile.maxTouchPoints);
   defineGetter(Navigator.prototype, "doNotTrack", null);
 
   // Screen profile
   try {
     defineGetter(Screen.prototype, "width", profile.screenWidth);
     defineGetter(Screen.prototype, "height", profile.screenHeight);
-    defineGetter(Screen.prototype, "availWidth", profile.screenWidth);
-    defineGetter(Screen.prototype, "availHeight", profile.screenHeight - 24);
+    defineGetter(Screen.prototype, "availWidth", profile.availWidth);
+    defineGetter(Screen.prototype, "availHeight", profile.availHeight);
+    defineGetter(Screen.prototype, "colorDepth", profile.colorDepth);
+    defineGetter(Screen.prototype, "pixelDepth", profile.colorDepth);
     defineGetter(window, "innerWidth", profile.screenWidth);
     defineGetter(window, "innerHeight", profile.screenHeight);
+    defineGetter(window, "outerWidth", profile.screenWidth);
+    defineGetter(window, "outerHeight", profile.screenHeight);
     defineGetter(window, "devicePixelRatio", profile.pixelRatio);
+
+    const orientation = {
+      type: profile.orientationType,
+      angle: profile.orientationAngle,
+      addEventListener: function(){},
+      removeEventListener: function(){},
+      dispatchEvent: function(){ return false; }
+    };
+    defineGetter(Screen.prototype, "orientation", orientation);
+    defineGetter(window, "orientation", profile.orientationAngle);
+    defineGetter(window, "visualViewport", {
+      width: profile.screenWidth,
+      height: profile.screenHeight,
+      scale: 1,
+      offsetLeft: 0,
+      offsetTop: 0,
+      pageLeft: 0,
+      pageTop: 0,
+      addEventListener: function(){},
+      removeEventListener: function(){},
+      dispatchEvent: function(){ return false; }
+    });
   } catch (e) {}
 
   // Timezone/locale
@@ -196,6 +266,30 @@ export function buildFingerprintScript(profile: FingerprintProfile = {}) {
       options.timeZone = profile.timezone;
       options.locale = profile.locale;
       return options;
+    };
+  } catch (e) {}
+
+  // CSS/media query consistency
+  try {
+    window.matchMedia = function(query) {
+      const q = String(query || "").toLowerCase();
+      let matches = false;
+      if (q.includes("pointer: coarse")) matches = true;
+      if (q.includes("hover: none")) matches = true;
+      if (q.includes("any-pointer: coarse")) matches = true;
+      if (q.includes("orientation: portrait")) matches = profile.orientationType.indexOf("portrait") >= 0;
+      if (q.includes("orientation: landscape")) matches = profile.orientationType.indexOf("landscape") >= 0;
+      if (q.includes("prefers-color-scheme")) matches = false;
+      return {
+        matches,
+        media: String(query),
+        onchange: null,
+        addListener: function(){},
+        removeListener: function(){},
+        addEventListener: function(){},
+        removeEventListener: function(){},
+        dispatchEvent: function(){ return false; }
+      };
     };
   } catch (e) {}
 
@@ -304,6 +398,17 @@ export function buildFingerprintScript(profile: FingerprintProfile = {}) {
     };
   } catch (e) {}
 
+  try {
+    if (typeof WebGL2RenderingContext !== "undefined") {
+      const getParameter2 = WebGL2RenderingContext.prototype.getParameter;
+      WebGL2RenderingContext.prototype.getParameter = function(parameter) {
+        if (parameter === 37445) return profile.webglVendor;
+        if (parameter === 37446) return profile.webglRenderer;
+        return getParameter2.call(this, parameter);
+      };
+    }
+  } catch (e) {}
+
   // Canvas
   try {
     const toDataURL = HTMLCanvasElement.prototype.toDataURL;
@@ -318,6 +423,31 @@ export function buildFingerprintScript(profile: FingerprintProfile = {}) {
         ctx.fillRect(x, y, 1, 1);
       }
       return toDataURL.apply(this, arguments);
+    };
+  } catch (e) {}
+
+  try {
+    const getImageData = CanvasRenderingContext2D.prototype.getImageData;
+    CanvasRenderingContext2D.prototype.getImageData = function() {
+      const imageData = getImageData.apply(this, arguments);
+      if (imageData && imageData.data && imageData.data.length > 4) {
+        imageData.data[0] = (imageData.data[0] + Math.floor(profile.canvasNoise * 10000000)) % 255;
+      }
+      return imageData;
+    };
+  } catch (e) {}
+
+  try {
+    const measureText = CanvasRenderingContext2D.prototype.measureText;
+    CanvasRenderingContext2D.prototype.measureText = function(text) {
+      const metrics = measureText.call(this, text);
+      try {
+        Object.defineProperty(metrics, "width", {
+          value: metrics.width + profile.canvasNoise,
+          configurable: true
+        });
+      } catch (e) {}
+      return metrics;
     };
   } catch (e) {}
 
@@ -336,11 +466,14 @@ export function buildFingerprintScript(profile: FingerprintProfile = {}) {
   // Battery
   try {
     navigator.getBattery = function() {
+      const hoursSinceGenerated = Math.max(0, (Date.now() - Date.parse(profile.generatedAt || new Date().toISOString())) / 3600000);
+      const drift = profile.battery.charging ? hoursSinceGenerated * profile.battery.driftPerHour : -hoursSinceGenerated * profile.battery.driftPerHour;
+      const level = Math.max(0.08, Math.min(1, profile.battery.level + drift));
       return Promise.resolve({
         charging: profile.battery.charging,
         chargingTime: profile.battery.chargingTime,
         dischargingTime: profile.battery.dischargingTime,
-        level: profile.battery.level,
+        level: Number(level.toFixed(2)),
         addEventListener: function(){},
         removeEventListener: function(){},
         dispatchEvent: function(){ return false; }
@@ -351,6 +484,7 @@ export function buildFingerprintScript(profile: FingerprintProfile = {}) {
   // Network
   try {
     const connection = {
+      type: profile.network.type,
       effectiveType: profile.network.effectiveType,
       downlink: profile.network.downlink,
       rtt: profile.network.rtt,
@@ -426,11 +560,16 @@ export function buildFingerprintScript(profile: FingerprintProfile = {}) {
 
   // Media devices
   try {
-    const devices = [
-      { deviceId: "bp-front-camera-" + profile.profileId, groupId: "bp-camera", kind: "videoinput", label: "" },
-      { deviceId: "bp-mic-" + profile.profileId, groupId: "bp-mic", kind: "audioinput", label: "" },
-      { deviceId: "bp-speaker-" + profile.profileId, groupId: "bp-speaker", kind: "audiooutput", label: "" }
-    ];
+    const devices = [];
+    for (let i = 0; i < profile.mediaDevices.cameraCount; i++) {
+      devices.push({ deviceId: "bp-camera-" + i + "-" + profile.profileId, groupId: "bp-camera", kind: "videoinput", label: "" });
+    }
+    for (let i = 0; i < profile.mediaDevices.microphoneCount; i++) {
+      devices.push({ deviceId: "bp-mic-" + i + "-" + profile.profileId, groupId: "bp-mic", kind: "audioinput", label: "" });
+    }
+    for (let i = 0; i < profile.mediaDevices.speakerCount; i++) {
+      devices.push({ deviceId: "bp-speaker-" + i + "-" + profile.profileId, groupId: "bp-speaker", kind: "audiooutput", label: "" });
+    }
 
     navigator.mediaDevices = navigator.mediaDevices || {};
     navigator.mediaDevices.enumerateDevices = function() {
@@ -483,6 +622,52 @@ export function buildFingerprintScript(profile: FingerprintProfile = {}) {
     defineValue(navigator, "hid", undefined);
     defineValue(navigator, "nfc", undefined);
   } catch (e) {}
+
+  try {
+    if (navigator.credentials) {
+      navigator.credentials.get = function() { return Promise.resolve(null); };
+      navigator.credentials.create = function() { return Promise.resolve(null); };
+      navigator.credentials.preventSilentAccess = function() { return Promise.resolve(); };
+    }
+  } catch (e) {}
+
+  try {
+    const sensorBlock = function() { throw new DOMException("Permission denied", "NotAllowedError"); };
+    defineValue(window, "DeviceMotionEvent", undefined);
+    defineValue(window, "DeviceOrientationEvent", undefined);
+    defineValue(window, "AbsoluteOrientationSensor", undefined);
+    defineValue(window, "Accelerometer", undefined);
+    defineValue(window, "Gyroscope", undefined);
+    defineValue(window, "Magnetometer", undefined);
+    defineValue(window, "AmbientLightSensor", undefined);
+  } catch (e) {}
+
+  window.__BROWSER_PROXY_DEVICE__ = {
+    profileId: profile.profileId,
+    brand: profile.brand,
+    model: profile.model,
+    deviceName: profile.deviceName,
+    timezone: profile.timezone,
+    locale: profile.locale,
+    screen: {
+      width: profile.screenWidth,
+      height: profile.screenHeight,
+      pixelRatio: profile.pixelRatio,
+      colorDepth: profile.colorDepth
+    },
+    hardware: {
+      cores: profile.hardwareConcurrency,
+      memory: profile.deviceMemory,
+      touchPoints: profile.maxTouchPoints
+    },
+    graphics: {
+      vendor: profile.webglVendor,
+      renderer: profile.webglRenderer
+    },
+    network: profile.network,
+    battery: profile.battery,
+    geo: profile.geolocation
+  };
 
   window.__BROWSER_PROXY_PROFILE__ = profile;
 

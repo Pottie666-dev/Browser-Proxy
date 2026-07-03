@@ -121,6 +121,49 @@ router.post("/", async (req, res, next) => {
 });
 
 
+
+router.delete("/:id/browser-state", async (req, res, next) => {
+  try {
+    const emptyState = {
+      cookies: {},
+      localStorage: {},
+      sessionStorage: {},
+      history: [],
+      updatedAt: new Date().toISOString(),
+    };
+
+    if (await useMongo()) {
+      const account = await AccountModel.findByIdAndUpdate(
+        req.params.id,
+        { $set: { browserState: emptyState } },
+        { new: true },
+      );
+
+      if (!account) {
+        res.status(404).json({ message: "Account not found" });
+        return;
+      }
+
+      res.json(emptyState);
+      return;
+    }
+
+    const account = memoryAccounts.get(req.params.id);
+    if (!account) {
+      res.status(404).json({ message: "Account not found" });
+      return;
+    }
+
+    account.browserState = emptyState;
+    account.updatedAt = new Date().toISOString();
+    memoryAccounts.set(account.id, account);
+    res.json(emptyState);
+  } catch (error) {
+    next(error);
+  }
+});
+
+
 router.get("/:id/browser-state", async (req, res, next) => {
   try {
     if (await useMongo()) {

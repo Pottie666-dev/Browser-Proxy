@@ -6,6 +6,14 @@ export type BrowserState = {
   updatedAt?: string | null;
 };
 
+export const EMPTY_BROWSER_STATE: BrowserState = {
+  cookies: {},
+  localStorage: {},
+  sessionStorage: {},
+  history: [],
+  updatedAt: null,
+};
+
 function safeJson(value: unknown): string {
   return JSON.stringify(value ?? {}).replace(/</g, "\\u003c");
 }
@@ -117,6 +125,26 @@ export function buildBrowserStateCaptureScript() {
   setTimeout(function() { capture("initial"); }, 1500);
   setInterval(function() { capture("interval"); }, 15000);
 
+  true;
+})();
+`;
+}
+
+
+export function buildBrowserStateClearScript() {
+  return `
+(function() {
+  try { window.localStorage.clear(); } catch (e) {}
+  try { window.sessionStorage.clear(); } catch (e) {}
+  try {
+    String(document.cookie || "").split(";").forEach(function(part) {
+      const name = part.split("=")[0] && part.split("=")[0].trim();
+      if (name) {
+        document.cookie = name + "=; Max-Age=0; path=/";
+        document.cookie = name + "=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
+      }
+    });
+  } catch (e) {}
   true;
 })();
 `;

@@ -6,6 +6,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Modal,
   Platform,
   Pressable,
@@ -23,7 +24,7 @@ import type { WebViewNavigation } from "react-native-webview";
 
 import { useColors } from "@/hooks/useColors";
 import { buildFingerprintScript, buildFormInterceptScript, type FingerprintProfile } from "@/lib/fingerprint";
-import { buildBrowserStateCaptureScript, buildBrowserStateRestoreScript, type BrowserState } from "@/lib/browser-state";
+import { EMPTY_BROWSER_STATE, buildBrowserStateCaptureScript, buildBrowserStateClearScript, buildBrowserStateRestoreScript, type BrowserState } from "@/lib/browser-state";
 
 const DEFAULT_URL = "https://www.google.com";
 
@@ -171,6 +172,7 @@ export default function BrowserScreen() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [bookmarksOpen, setBookmarksOpen] = useState(false);
+  const [sessionOpen, setSessionOpen] = useState(false);
   const storedFingerprintProfile: FingerprintProfile = (() => {
     try {
       const raw = typeof fingerprintProfileJson === "string" ? fingerprintProfileJson : "";
@@ -294,6 +296,49 @@ export default function BrowserScreen() {
     setMenuOpen(false);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }
+
+  const browserStateCounts = {
+    cookies: Object.keys(browserState?.cookies ?? {}).length,
+    localStorage: Object.keys(browserState?.localStorage ?? {}).length,
+    sessionStorage: Object.keys(browserState?.sessionStorage ?? {}).length,
+    history: browserState?.history?.length ?? 0,
+  };
+
+  const resetSessionState = useCallback(async () => {
+    if (!accountId || !apiBaseUrl) return;
+
+    Alert.alert(
+      "Reset Session",
+      "Clear this account's cookies, storage and history? This does not delete the account.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Reset",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await fetch(`${apiBaseUrl}/api/accounts/${encodeURIComponent(accountId)}/browser-state`, {
+                method: "DELETE",
+              });
+              setBrowserState(EMPTY_BROWSER_STATE);
+              webViewRef.current?.injectJavaScript(buildBrowserStateClearScript());
+              webViewRef.current?.reload();
+              setSessionOpen(false);
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            } catch {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            }
+          },
+        },
+      ],
+    );
+  }, [accountId, apiBaseUrl]);
+
+  const clearCurrentPageRuntimeState = useCallback(() => {
+    webViewRef.current?.injectJavaScript(buildBrowserStateClearScript());
+    setBrowserState(EMPTY_BROWSER_STATE);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, []);
 
   const onNavigationStateChange = useCallback(
     (navState: WebViewNavigation) => {
@@ -571,6 +616,10 @@ export default function BrowserScreen() {
               <Feather name="book-open" size={17} color={colors.primary} />
               <Text style={[styles.menuText, { color: colors.foreground }]}>Bookmarks</Text>
             </Pressable>
+            <Pressable style={styles.menuRow} onPress={() => { setSessionOpen(true); setMenuOpen(false); }}>
+              <Feather name="database" size={17} color={colors.primary} />
+              <Text style={[styles.menuText, { color: colors.foreground }]}>Session isolation</Text>
+            </Pressable>
           </Pressable>
         </Pressable>
       </Modal>
@@ -614,6 +663,51 @@ export default function BrowserScreen() {
               <Text style={[styles.drawerEmpty, { color: colors.mutedForeground }]}>No bookmarks yet.</Text>
             )}
           </ScrollView>
+        </View>
+      </Modal>
+
+      {/* Session isolation drawer */}
+      <Modal visible={sessionOpen} transparent animationType="slide" onRequestClose={() => setSessionOpen(false)}>
+        <View style={[styles.drawer, { backgroundColor: colors.card, borderColor: colors.border, paddingBottom: bottomInset + 12 }]}>
+          <View style={styles.drawerHeader}>
+            <Text style={[styles.drawerTitle, { color: colors.foreground }]}>Session Isolation</Text>
+            <Pressable onPress={() => setSessionOpen(false)} hitSlop={10}>
+              <Feather name="x" size={20} color={colors.mutedForeground} />
+            </Pressable>
+          </View>
+
+          <View style={[styles.sessionCard, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+            <View style={styles.sessionMetric}>
+              <Text style={[styles.sessionMetricValue, { color: colors.foreground }]}>{browserStateCounts.cookies}</Text>
+              <Text style={[styles.sessionMetricLabel, { color: colors.mutedForeground }]}>Cookies</Text>
+            </View>
+            <View style={styles.sessionMetric}>
+              <Text style={[styles.sessionMetricValue, { color: colors.foreground }]}>{browserStateCounts.localStorage}</Text>
+              <Text style={[styles.sessionMetricLabel, { color: colors.mutedForeground }]}>Local</Text>
+            </View>
+            <View style={styles.sessionMetric}>
+              <Text style={[styles.sessionMetricValue, { color: colors.foreground }]}>{browserStateCounts.sessionStorage}</Text>
+              <Text style={[styles.sessionMetricLabel, { color: colors.mutedForeground }]}>Session</Text>
+            </View>
+            <View style={styles.sessionMetric}>
+              <Text style={[styles.sessionMetricValue, { color: colors.foreground }]}>{browserStateCounts.history}</Text>
+              <Text style={[styles.sessionMetricLabel, { color: colors.mutedForeground }]}>History</Text>
+            </View>
+          </View>
+
+          <Text style={[styles.sessionHelp, { color: colors.mutedForeground }]}>
+            This state is saved per account. Opening another account gets its own storage and browsing history.
+          </Text>
+
+          <Pressable style={[styles.sessionButton, { backgroundColor: colors.muted, borderColor: colors.border }]} onPress={clearCurrentPageRuntimeState}>
+            <Feather name="refresh-cw" size={16} color={colors.foreground} />
+            <Text style={[styles.sessionButtonText, { color: colors.foreground }]}>Clear current page runtime</Text>
+          </Pressable>
+
+          <Pressable style={[styles.sessionButton, { backgroundColor: colors.destructive + "18", borderColor: colors.destructive + "40" }]} onPress={resetSessionState}>
+            <Feather name="trash-2" size={16} color={colors.destructive} />
+            <Text style={[styles.sessionButtonText, { color: colors.destructive }]}>Reset saved session</Text>
+          </Pressable>
         </View>
       </Modal>
 
@@ -740,6 +834,13 @@ const styles = StyleSheet.create({
   drawerItemTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   drawerItemSub: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 3 },
   drawerEmpty: { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center", paddingVertical: 40 },
+  sessionCard: { flexDirection: "row", borderRadius: 14, borderWidth: 1, padding: 12, marginBottom: 10 },
+  sessionMetric: { flex: 1, alignItems: "center", gap: 3 },
+  sessionMetricValue: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  sessionMetricLabel: { fontSize: 10, fontFamily: "Inter_500Medium" },
+  sessionHelp: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17, marginBottom: 12 },
+  sessionButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 12, borderWidth: 1, paddingVertical: 13, marginTop: 8 },
+  sessionButtonText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   bottomBar: {
     borderTopWidth: 1, paddingTop: 8, paddingHorizontal: 16, paddingBottom: 8, alignItems: "center",
   },
