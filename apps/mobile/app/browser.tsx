@@ -26,6 +26,7 @@ import { useColors } from "@/hooks/useColors";
 import { buildFingerprintScript, buildFormInterceptScript, type FingerprintProfile } from "@/lib/fingerprint";
 import { EMPTY_BROWSER_STATE, buildBrowserStateCaptureScript, buildBrowserStateClearScript, buildBrowserStateRestoreScript, type BrowserState } from "@/lib/browser-state";
 import { getBrowserProfilePaths, getIsolationCapabilities, type IsolationCapability, isNativeIsolationAvailable } from "@/lib/native-isolation";
+import { clearNativeBrowserProfile, getNativeProfileCapabilities, prepareNativeBrowserProfile, type NativeProfileCapabilities, type NativeProfilePaths } from "@/lib/browser-profile-native";
 
 const DEFAULT_URL = "https://www.google.com";
 
@@ -193,6 +194,8 @@ export default function BrowserScreen() {
   };
 
   const [browserState, setBrowserState] = useState<BrowserState | null>(null);
+  const [nativeProfilePaths, setNativeProfilePaths] = useState<NativeProfilePaths | null>(null);
+  const [nativeCapabilities, setNativeCapabilities] = useState<NativeProfileCapabilities | null>(null);
   const [showDebug, setShowDebug] = useState(false);
   const apiBaseUrl = getApiBaseUrl();
   const browserProfilePaths = getBrowserProfilePaths(accountId);
@@ -205,6 +208,39 @@ export default function BrowserScreen() {
   useEffect(() => {
     setActiveTabId((current) => current || tabs[0]?.id || "");
   }, [tabs]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function prepareNativeProfile() {
+      if (!accountId) return;
+
+      try {
+        const [capabilities, paths] = await Promise.all([
+          getNativeProfileCapabilities(),
+          prepareNativeBrowserProfile(accountId),
+        ]);
+
+        if (!cancelled) {
+          setNativeCapabilities(capabilities);
+          setNativeProfilePaths(paths);
+        }
+      } catch {
+        if (!cancelled) {
+          setNativeCapabilities(null);
+          setNativeProfilePaths(null);
+        }
+      }
+    }
+
+    prepareNativeProfile();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [accountId]);
+
+
 
   function navigate(input: string) {
     setIsEditing(false);
@@ -324,6 +360,7 @@ export default function BrowserScreen() {
               await fetch(`${apiBaseUrl}/api/accounts/${encodeURIComponent(accountId)}/browser-state`, {
                 method: "DELETE",
               });
+              await clearNativeBrowserProfile(accountId);
               setBrowserState(EMPTY_BROWSER_STATE);
               webViewRef.current?.injectJavaScript(buildBrowserStateClearScript());
               webViewRef.current?.reload();
@@ -723,6 +760,15 @@ export default function BrowserScreen() {
             This state is saved per account. Opening another account gets its own storage and browsing history.
           </Text>
 
+          <View style={[styles.sessionNativeBox, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+            <Text style={[styles.sessionNativeTitle, { color: colors.foreground }]}>
+              Native profile: {nativeCapabilities?.available ? "active" : "fallback"}
+            </Text>
+            <Text style={[styles.sessionNativeText, { color: colors.mutedForeground }]} numberOfLines={2}>
+              Native profile root: {nativeProfilePaths?.rootDir ?? browserProfilePaths.cookieStore}
+            </Text>
+          </View>
+
           <Pressable style={[styles.sessionButton, { backgroundColor: colors.muted, borderColor: colors.border }]} onPress={clearCurrentPageRuntimeState}>
             <Feather name="refresh-cw" size={16} color={colors.foreground} />
             <Text style={[styles.sessionButtonText, { color: colors.foreground }]}>Clear current page runtime</Text>
@@ -872,6 +918,9 @@ const styles = StyleSheet.create({
   sessionMetricValue: { fontSize: 18, fontFamily: "Inter_700Bold" },
   sessionMetricLabel: { fontSize: 10, fontFamily: "Inter_500Medium" },
   sessionHelp: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17, marginBottom: 12 },
+  sessionNativeBox: { borderRadius: 12, borderWidth: 1, padding: 10, marginBottom: 8 },
+  sessionNativeTitle: { fontSize: 12, fontFamily: "Inter_700Bold", marginBottom: 4 },
+  sessionNativeText: { fontSize: 10, fontFamily: "Inter_400Regular", lineHeight: 14 },
   sessionButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 12, borderWidth: 1, paddingVertical: 13, marginTop: 8 },
   sessionButtonText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   bottomBar: {

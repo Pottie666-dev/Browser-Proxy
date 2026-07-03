@@ -60,6 +60,7 @@
   },
   "dependencies": {
     "expo-clipboard": "^56.0.4",
-    "react-native-webview": "^14.0.1"
+    "react-native-webview": "^14.0.1",
+    "@browser-proxy/browser-profile": "file:./modules/browser-profile"
   }
 }

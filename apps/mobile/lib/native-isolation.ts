@@ -1,3 +1,5 @@
+import { NativeModules } from "react-native";
+
 export type IsolationCapability = {
   key: string;
   label: string;
@@ -42,5 +44,5 @@ export function getIsolationCapabilities(): IsolationCapability[] {
 }
 
 export function isNativeIsolationAvailable(): boolean {
-  return false;
+  return Boolean(NativeModules.BrowserProfile);
 }
