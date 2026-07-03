@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { AccountModel } from "../lib/account-model";
 import { connectMongo, hasMongoUri } from "../lib/mongo";
-import { generateIdentity } from "../lib/identity";
+import { generateIdentity, mergeFingerprint } from "../lib/identity";
 
 type Account = Record<string, unknown> & {
   id: string;
@@ -34,24 +34,39 @@ function cleanBody(body: unknown): Record<string, unknown> {
   return cleaned;
 }
 
+function bodyFingerprint(body: Record<string, unknown>): Record<string, unknown> {
+  return body.fingerprint && typeof body.fingerprint === "object"
+    ? (body.fingerprint as Record<string, unknown>)
+    : {};
+}
+
+function requestedTimezone(body: Record<string, unknown>): string | undefined {
+  const fp = bodyFingerprint(body);
+  if (typeof fp.timezone === "string" && fp.timezone) return fp.timezone;
+  if (typeof body.timezone === "string" && body.timezone) return body.timezone;
+  return undefined;
+}
+
 async function useMongo(): Promise<boolean> {
   if (!hasMongoUri()) return false;
   await connectMongo();
   return true;
 }
 
+function cleanMongoAccount(account: any) {
+  return {
+    ...account,
+    id: account._id?.toString?.() ?? account.id,
+    _id: undefined,
+    __v: undefined,
+  };
+}
+
 router.get("/", async (_req, res, next) => {
   try {
     if (await useMongo()) {
-      const accounts = await AccountModel.find({}).sort({ createdAt: -1 }).lean({ virtuals: true });
-      res.json(
-        accounts.map((account: any) => ({
-          ...account,
-          id: account._id?.toString?.() ?? account.id,
-          _id: undefined,
-          __v: undefined,
-        })),
-      );
+      const accounts = await AccountModel.find({}).sort({ updatedAt: -1, createdAt: -1 }).lean();
+      res.json(accounts.map(cleanMongoAccount));
       return;
     }
 
@@ -65,23 +80,21 @@ router.post("/", async (req, res, next) => {
   try {
     const body = cleanBody(req.body);
     const name = typeof body.name === "string" && body.name ? body.name : "New Account";
-    const identity = generateIdentity();
 
-    const bodyFingerprint = typeof body.fingerprint === "object" && body.fingerprint ? body.fingerprint as Record<string, unknown> : {};
-    const enrichedTimezone = typeof bodyFingerprint.timezone === "string" && bodyFingerprint.timezone
-      ? bodyFingerprint.timezone
-      : identity.fingerprint.timezone;
+    const identity = generateIdentity(requestedTimezone(body));
+    const fpPatch = bodyFingerprint(body);
+    const fingerprint = {
+      ...identity.fingerprint,
+      ...fpPatch,
+      timezone: requestedTimezone(body) ?? identity.fingerprint.timezone,
+    };
 
     const enrichedBody = {
       ...identity,
       ...body,
-      fingerprint: {
-        ...identity.fingerprint,
-        ...bodyFingerprint,
-        timezone: enrichedTimezone,
-      },
-      timezone: enrichedTimezone,
       name,
+      fingerprint,
+      timezone: fingerprint.timezone,
       deviceName: typeof body.deviceName === "string" && body.deviceName ? body.deviceName : identity.deviceName,
       fakeIp: typeof body.fakeIp === "string" && body.fakeIp ? body.fakeIp : identity.fakeIp,
       userAgent: typeof body.userAgent === "string" && body.userAgent ? body.userAgent : identity.userAgent,
@@ -97,7 +110,6 @@ router.post("/", async (req, res, next) => {
     const account: Account = {
       ...enrichedBody,
       id: makeId(),
-      name,
       createdAt: now,
       updatedAt: now,
     };
@@ -134,21 +146,39 @@ router.get("/:id", async (req, res, next) => {
 router.patch("/:id", async (req, res, next) => {
   try {
     const body = cleanBody(req.body);
-    const bodyFingerprint = typeof body.fingerprint === "object" && body.fingerprint ? body.fingerprint as Record<string, unknown> : {};
-    if (typeof bodyFingerprint.timezone === "string" && bodyFingerprint.timezone) {
-      body.timezone = bodyFingerprint.timezone;
-    }
+    const fpPatch = bodyFingerprint(body);
 
     if (await useMongo()) {
+      const existing = await AccountModel.findById(req.params.id);
+      if (!existing) {
+        res.status(404).json({ message: "Account not found" });
+        return;
+      }
+
+      const existingObject = existing.toObject() as Record<string, unknown>;
+      const mergedFingerprint = mergeFingerprint(existingObject.fingerprint, fpPatch);
+
+      if (requestedTimezone(body)) {
+        mergedFingerprint.timezone = requestedTimezone(body);
+      }
+
+      const patch = {
+        ...body,
+        fingerprint: mergedFingerprint,
+        timezone: typeof mergedFingerprint.timezone === "string" ? mergedFingerprint.timezone : existingObject.timezone,
+      };
+
       const account = await AccountModel.findByIdAndUpdate(
         req.params.id,
-        { $set: body },
+        { $set: patch },
         { new: true, runValidators: true },
       );
+
       if (!account) {
         res.status(404).json({ message: "Account not found" });
         return;
       }
+
       res.json(account.toJSON());
       return;
     }
@@ -159,11 +189,18 @@ router.patch("/:id", async (req, res, next) => {
       return;
     }
 
+    const mergedFingerprint = mergeFingerprint(existing.fingerprint, fpPatch);
+    if (requestedTimezone(body)) {
+      mergedFingerprint.timezone = requestedTimezone(body);
+    }
+
     const updated: Account = {
       ...existing,
       ...body,
       id: existing.id,
       name: typeof body.name === "string" && body.name ? body.name : existing.name,
+      fingerprint: mergedFingerprint,
+      timezone: typeof mergedFingerprint.timezone === "string" ? mergedFingerprint.timezone : existing.timezone,
       createdAt: existing.createdAt,
       updatedAt: new Date().toISOString(),
     };

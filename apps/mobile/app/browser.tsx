@@ -58,7 +58,7 @@ function extractTargetUrl(proxyUrl: string): string {
 }
 
 function CopyItem({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
-  const { fingerprintTimezone } = useLocalSearchParams<{ fingerprintTimezone?: string }>();
+  const { fingerprintTimezone, fingerprintProfileJson } = useLocalSearchParams<{ fingerprintTimezone?: string; fingerprintProfileJson?: string }>();
   const colors = useColors();
   const [copied, setCopied] = useState(false);
 
@@ -100,7 +100,7 @@ const debugStyles = StyleSheet.create({
 });
 
 export default function BrowserScreen() {
-  const { fingerprintTimezone } = useLocalSearchParams<{ fingerprintTimezone?: string }>();
+  const { fingerprintTimezone, fingerprintProfileJson } = useLocalSearchParams<{ fingerprintTimezone?: string; fingerprintProfileJson?: string }>();
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const webViewRef = useRef<any>(null);
@@ -132,12 +132,22 @@ export default function BrowserScreen() {
   const [canGoForward, setCanGoForward] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
+  const storedFingerprintProfile: FingerprintProfile = (() => {
+    try {
+      const raw = typeof fingerprintProfileJson === "string" ? fingerprintProfileJson : "";
+      return raw ? (JSON.parse(raw) as FingerprintProfile) : {};
+    } catch {
+      return {};
+    }
+  })();
+
   const fingerprintProfile: FingerprintProfile = {
+    ...storedFingerprintProfile,
     accountId: String(accountId ?? ""),
-    deviceName: String(deviceName ?? ""),
-    userAgent: String(userAgent ?? ""),
+    deviceName: String(deviceName ?? "") || storedFingerprintProfile.deviceName,
+    userAgent: String(userAgent ?? "") || storedFingerprintProfile.userAgent,
     fakeIp: String(fakeIp ?? ""),
-    timezone: String(fingerprintTimezone ?? "") || undefined,
+    timezone: String(fingerprintTimezone ?? "") || storedFingerprintProfile.timezone,
   };
 
   const [showDebug, setShowDebug] = useState(false);

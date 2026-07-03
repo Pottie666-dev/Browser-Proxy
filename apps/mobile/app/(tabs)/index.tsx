@@ -115,6 +115,10 @@ function searchableText(account: VaultAccount): string {
     .toLowerCase();
 }
 
+function fingerprintParam(account: VaultAccount): string {
+  return JSON.stringify(account.fingerprint ?? {});
+}
+
 function sortAccounts(accounts: VaultAccount[], mode: SortMode): VaultAccount[] {
   const sorted = [...accounts];
 
@@ -393,6 +397,7 @@ export default function AccountsScreen() {
         image1: account.image1 ?? "",
         image2: account.image2 ?? "",
         fingerprintTimezone: fingerprintTimezone(account),
+        fingerprintProfileJson: fingerprintParam(account),
       },
     });
   }
