@@ -10,7 +10,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "prebuild:android": "expo prebuild --platform android",
     "android:native": "expo run:android",
-    "doctor": "expo doctor"
+    "doctor": "expo doctor",
+    "android": "expo run:android",
+    "ios": "expo run:ios"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
@@ -61,6 +63,9 @@
   "dependencies": {
     "expo-clipboard": "^56.0.4",
     "react-native-webview": "^14.0.1",
-    "@browser-proxy/browser-profile": "file:./modules/browser-profile"
+    "@browser-proxy/browser-profile": "file:./modules/browser-profile",
+    "expo": "~54.0.35",
+    "react": "19.1.0",
+    "react-native": "0.81.5"
   }
 }
