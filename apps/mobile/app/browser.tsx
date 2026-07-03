@@ -25,6 +25,7 @@ import type { WebViewNavigation } from "react-native-webview";
 import { useColors } from "@/hooks/useColors";
 import { buildFingerprintScript, buildFormInterceptScript, type FingerprintProfile } from "@/lib/fingerprint";
 import { EMPTY_BROWSER_STATE, buildBrowserStateCaptureScript, buildBrowserStateClearScript, buildBrowserStateRestoreScript, type BrowserState } from "@/lib/browser-state";
+import { getBrowserProfilePaths, getIsolationCapabilities, type IsolationCapability, isNativeIsolationAvailable } from "@/lib/native-isolation";
 
 const DEFAULT_URL = "https://www.google.com";
 
@@ -194,6 +195,9 @@ export default function BrowserScreen() {
   const [browserState, setBrowserState] = useState<BrowserState | null>(null);
   const [showDebug, setShowDebug] = useState(false);
   const apiBaseUrl = getApiBaseUrl();
+  const browserProfilePaths = getBrowserProfilePaths(accountId);
+  const isolationCapabilities = getIsolationCapabilities();
+  const nativeIsolationAvailable = isNativeIsolationAvailable();
 
   const topInset = Platform.OS === "web" ? 67 : insets.top;
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
@@ -569,6 +573,26 @@ export default function BrowserScreen() {
               </Text>
             </View>
 
+            <View style={[styles.locationRow, { backgroundColor: nativeIsolationAvailable ? colors.primary + "10" : colors.muted, borderColor: nativeIsolationAvailable ? colors.primary + "30" : colors.border, marginTop: 6 }]}>
+              <Feather name={nativeIsolationAvailable ? "check-circle" : "tool"} size={13} color={nativeIsolationAvailable ? colors.primary : colors.mutedForeground} />
+              <Text style={[styles.locationText, { color: nativeIsolationAvailable ? colors.primary : colors.mutedForeground }]}>
+                Native Isolation: {nativeIsolationAvailable ? "active" : "planned for custom Android build"} - Profile {browserProfilePaths.profileId}
+              </Text>
+            </View>
+
+            <View style={styles.nativeGrid}>
+              {isolationCapabilities.map((cap) => (
+                <View key={cap.key} style={[styles.nativeChip, { backgroundColor: cap.status === "native-ready" ? colors.primary + "12" : colors.muted, borderColor: colors.border }]}>
+                  <Feather
+                    name={cap.status === "native-ready" ? "check" : cap.status === "js" ? "code" : "cpu"}
+                    size={10}
+                    color={cap.status === "native-ready" ? colors.primary : colors.mutedForeground}
+                  />
+                  <Text style={[styles.nativeChipText, { color: cap.status === "native-ready" ? colors.primary : colors.mutedForeground }]}>{cap.label}</Text>
+                </View>
+              ))}
+            </View>
+
             {(image1 || image2) && (
               <View style={styles.debugImagesSection}>
                 <Text style={[styles.debugImagesLabel, { color: colors.mutedForeground }]}>STORED IMAGES</Text>
@@ -754,6 +778,12 @@ export default function BrowserScreen() {
           domStorageEnabled
           sharedCookiesEnabled={false}
           thirdPartyCookiesEnabled={false}
+          cacheEnabled={false}
+          incognito={false}
+          javaScriptCanOpenWindowsAutomatically={false}
+          setSupportMultipleWindows={false}
+          allowsFullscreenVideo={false}
+          mixedContentMode="never"
           contentInsetAdjustmentBehavior="never"
         />
       )}
@@ -810,6 +840,9 @@ const styles = StyleSheet.create({
     borderColor: "transparent", marginTop: 4,
   },
   locationText: { flex: 1, fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 15 },
+  nativeGrid: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 8, marginBottom: 4 },
+  nativeChip: { flexDirection: "row", alignItems: "center", gap: 4, borderRadius: 7, borderWidth: 1, paddingHorizontal: 7, paddingVertical: 4 },
+  nativeChipText: { fontSize: 9, fontFamily: "Inter_600SemiBold" },
   webView: { flex: 1 },
   webFallback: {
     flex: 1, alignItems: "center", justifyContent: "center",
