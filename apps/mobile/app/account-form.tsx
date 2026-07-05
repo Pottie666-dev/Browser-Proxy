@@ -310,7 +310,7 @@ export default function AccountFormScreen() {
         { id: params.accountId, data: payload },
         {
           onSuccess: () => { queryClient.invalidateQueries({ queryKey: getListAccountsQueryKey() }); Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); router.back(); },
-          onError: (error) => { console.error("Account save failed", error); Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error); }
+          onError: (error: unknown) => { console.error("Account save failed", error); Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error); }
         }
       );
     } else {
@@ -318,7 +318,7 @@ export default function AccountFormScreen() {
         { data: payload },
         {
           onSuccess: () => { queryClient.invalidateQueries({ queryKey: getListAccountsQueryKey() }); Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); router.back(); },
-          onError: (error) => { console.error("Account save failed", error); Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error); }
+          onError: (error: unknown) => { console.error("Account save failed", error); Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error); }
         }
       );
     }

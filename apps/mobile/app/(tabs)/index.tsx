@@ -250,7 +250,7 @@ function AccountCard({
 
           {tags.length ? (
             <View style={styles.tagRow}>
-              {tags.slice(0, 3).map((tag) => (
+              {tags.slice(0, 3).map((tag: string) => (
                 <View key={tag} style={[styles.tag, { backgroundColor: colors.primary + "12" }]}>
                   <Text style={[styles.tagText, { color: colors.primary }]}>#{tag}</Text>
                 </View>
