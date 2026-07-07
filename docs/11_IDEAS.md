@@ -70,3 +70,46 @@
 - tmux workspace
 - code-server workspace
 - GitHub release script
+
+## Account Inbox and App Ecosystem
+
+Future expansion idea:
+
+Each Browser-Proxy account should eventually be able to link its own email inbox and app ecosystem.
+
+### Per-account inbox
+
+- Link Gmail/Outlook/Yahoo/custom IMAP inbox per account
+- Show inbox inside the account profile
+- Read OTP emails
+- Copy OTP codes quickly
+- Autofill verification codes into browser
+- Store email login metadata securely
+- Support account-specific email history
+
+### Per-account apps
+
+Each account could have associated apps/services, for example:
+
+- WhatsApp
+- Binance
+- Telegram
+- Gmail
+- Outlook
+- Facebook
+- TikTok
+- Banking/crypto apps
+- Casino apps
+- KYC portals
+
+### Possible implementation paths
+
+- Store app metadata per account first
+- Add deep links to open external apps
+- Add web versions where possible
+- Later investigate Android work profiles / cloned app containers
+- Long-term: each Browser-Proxy account behaves like a full virtual phone profile, not only a browser profile
+
+### Notes
+
+Native Android app isolation is much harder than browser isolation. Browser-Proxy can start by linking accounts to inboxes and app shortcuts, then later explore true per-account app containers.
