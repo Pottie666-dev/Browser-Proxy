@@ -28,6 +28,7 @@
     "@ungap/structured-clone": "^1.3.0",
     "@workspace/api-client-react": "workspace:*",
     "babel-plugin-react-compiler": "^19.0.0-beta-e993439-20250117",
+    "eas-cli": "^20.5.1",
     "expo": "~54.0.27",
     "expo-blur": "~15.0.8",
     "expo-constants": "~18.0.11",
@@ -61,11 +62,12 @@
     "zod-validation-error": "^3.4.0"
   },
   "dependencies": {
-    "expo-clipboard": "^56.0.4",
-    "react-native-webview": "^14.0.1",
     "@browser-proxy/browser-profile": "file:./modules/browser-profile",
     "expo": "~54.0.35",
+    "expo-clipboard": "^56.0.4",
+    "expo-dev-client": "^57.0.5",
     "react": "19.1.0",
-    "react-native": "0.81.5"
+    "react-native": "0.81.5",
+    "react-native-webview": "^14.0.1"
   }
 }
