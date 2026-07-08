@@ -6,16 +6,13 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal",
-      "installCommand": "pnpm install --no-frozen-lockfile"
+      "distribution": "internal"
     },
     "preview": {
-      "distribution": "internal",
-      "installCommand": "pnpm install --no-frozen-lockfile"
+      "distribution": "internal"
     },
     "production": {
-      "autoIncrement": true,
-      "installCommand": "pnpm install --no-frozen-lockfile"
+      "autoIncrement": true
     }
   },
   "submit": {
