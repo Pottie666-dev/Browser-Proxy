@@ -27,7 +27,6 @@
     "typescript": "~5.9.2"
   },
   "dependencies": {
-    "@browser-proxy/browser-profile": "file:./modules/browser-profile",
     "expo": "~54.0.35",
     "expo-clipboard": "~8.0.8",
     "expo-dev-client": "~6.0.21",
@@ -64,17 +63,6 @@
     "react-native-web": "^0.21.0",
     "react-native-worklets": "0.5.1",
     "zod": "catalog:",
-    "zod-validation-error": "^3.4.0",
-    "expo-modules-core": "~3.0.30"
-  },
-  "expo": {
-    "doctor": {
-      "reactNativeDirectoryCheck": {
-        "exclude": [
-          "@browser-proxy/browser-profile"
-        ],
-        "listUnknownPackages": false
-      }
-    }
+    "zod-validation-error": "^3.4.0"
   }
 }

@@ -6,7 +6,14 @@
   "types": "src/index.ts",
   "private": true,
   "peerDependencies": {
-    "expo": "*",
-    "expo-modules-core": "*"
+    "expo": "*"
+  },
+  "peerDependenciesMeta": {
+    "expo": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "expo-modules-core": "~3.0.30"
   }
 }
