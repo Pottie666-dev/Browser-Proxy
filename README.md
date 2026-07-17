@@ -35,3 +35,14 @@ pnpm run mobile:android:native
 ## Documentation
 
 See the `docs/` folder for project vision, roadmap, architecture, development setup, native Android work, fingerprint engine, proxy engine, database, API, UI/UX, release plan, ideas, dev notes, changelog, troubleshooting, security model, and project history.
+## Cloud Browser Expansion
+
+- `docs/16_CLOUD_BROWSER.md`
+- `docs/17_CLOUD_BROWSER_ARCHITECTURE.md`
+- `docs/18_CLOUD_BROWSER_API.md`
+- `docs/19_CLOUD_BROWSER_MOBILE.md`
+- `docs/20_CLOUD_BROWSER_DEPLOYMENT.md`
+- `docs/21_CLOUD_BROWSER_SECURITY.md`
+- `docs/22_CLOUD_BROWSER_TASKS.md`
+- `docs/23_CODESPACES_WORKFLOW.md`
+- `docs/24_FIRST_USABLE_RELEASE.md`

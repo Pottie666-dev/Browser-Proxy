@@ -104,3 +104,13 @@ Includes browser fingerprint, canvas seed, audio seed, WebGL vendor/renderer, sc
 - Stage 9 - Proxy Engine
 - Stage 10 - Fingerprint Verification Dashboard
 - v1.0 - First Stable Native Browser
+
+## Future Expansion - Cloud Browser
+
+- [ ] One-tap cloud session creation
+- [ ] Secure streaming
+- [ ] Persistent profiles
+- [ ] Clipboard and file transfer
+- [ ] Reconnect, pause, resume, cleanup
+- [ ] Per-session proxy/VPN
+- [ ] Playwright and AI automation
