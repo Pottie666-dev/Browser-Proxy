@@ -11,7 +11,8 @@
     },
     "preview": {
       "distribution": "internal",
-      "pnpm": "9.15.9"
+      "pnpm": "9.15.9",
+      "environment": "preview"
     },
     "production": {
       "autoIncrement": true,
