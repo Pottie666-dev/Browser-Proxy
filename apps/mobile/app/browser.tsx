@@ -6,6 +6,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import {
   ActivityIndicator,
+  AppState,
   Alert,
   Modal,
   Platform,
@@ -18,9 +19,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { WebView } = require("react-native-webview") as { WebView: React.ComponentType<any> };
-import type { WebViewNavigation } from "react-native-webview";
+import { BrowserProfileView, type BrowserNavigationEvent, type BrowserProfileViewRef } from "../modules/browser-profile/src";
 
 import { useColors } from "@/hooks/useColors";
 import { buildFingerprintScript, buildFormInterceptScript, type FingerprintProfile } from "@/lib/fingerprint";
@@ -133,7 +132,7 @@ const debugStyles = StyleSheet.create({
 export default function BrowserScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const webViewRef = useRef<any>(null);
+  const webViewRef = useRef<BrowserProfileViewRef>(null);
 
   const params = useLocalSearchParams<{
     accountId: string;
@@ -208,6 +207,17 @@ export default function BrowserScreen() {
   useEffect(() => {
     setActiveTabId((current) => current || tabs[0]?.id || "");
   }, [tabs]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") webViewRef.current?.resume();
+      else webViewRef.current?.pause();
+    });
+    return () => {
+      subscription.remove();
+      webViewRef.current?.pause();
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -360,6 +370,7 @@ export default function BrowserScreen() {
               await fetch(`${apiBaseUrl}/api/accounts/${encodeURIComponent(accountId)}/browser-state`, {
                 method: "DELETE",
               });
+              await webViewRef.current?.clearProfileData();
               await clearNativeBrowserProfile(accountId);
               setBrowserState(EMPTY_BROWSER_STATE);
               webViewRef.current?.injectJavaScript(buildBrowserStateClearScript());
@@ -382,7 +393,7 @@ export default function BrowserScreen() {
   }, []);
 
   const onNavigationStateChange = useCallback(
-    (navState: WebViewNavigation) => {
+    (navState: BrowserNavigationEvent["nativeEvent"]) => {
       setCanGoBack(navState.canGoBack);
       setCanGoForward(navState.canGoForward);
       if (navState.url && !isEditing) {
@@ -400,32 +411,7 @@ export default function BrowserScreen() {
     [isEditing, currentProxyUrl, activeTabId]
   );
 
-  const onShouldStartLoadWithRequest = useCallback(
-    (request: WebViewNavigation) => {
-      const { url } = request;
-      if (!url) return true;
 
-      // Already a valid proxy URL — let it through
-      if (url.includes("/api/proxy?url=") && url.includes("accountId=")) return true;
-
-      // Malformed proxy URL (e.g. GET form stripped our params) — block silently
-      if (url.includes("/api/proxy")) return false;
-
-      // Any plain HTTP/HTTPS URL — wrap it in the proxy.
-      // Use injectJavaScript to navigate imperatively so we don't update the
-      // source prop — that would re-mount the WebView and cause a reload loop
-      // every time Google's JS does an internal redirect.
-      if (url.startsWith("http://") || url.startsWith("https://")) {
-        const proxyUrl = buildProxyUrl(url, accountId);
-        setAddressBarText(url);
-        setTimeout(() => setCurrentProxyUrl(proxyUrl), 0);
-        return false;
-      }
-
-      return true;
-    },
-    [accountId]
-  );
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -799,38 +785,31 @@ export default function BrowserScreen() {
           ) : null}
         </View>
       ) : (
-        <WebView
-          onMessage={handleWebMessage}
+        <BrowserProfileView
           ref={webViewRef}
-          source={{ uri: currentProxyUrl }}
+          profileId={accountId}
+          url={currentProxyUrl}
           style={styles.webView}
           userAgent={userAgent || undefined}
-          injectedJavaScriptBeforeContentLoaded={buildBrowserStateRestoreScript(browserState) + '\n' + buildFingerprintScript(fingerprintProfile) + '\n' + buildFormInterceptScript() + '\n' + buildBrowserStateCaptureScript()}
-          injectedJavaScriptForMainFrameOnly={false}
-          onLoadStart={() => { setIsLoading(true); setLoadingProgress(0.1); }}
-          onError={({ nativeEvent }: { nativeEvent: { description?: string } }) => {
+          injectedJavaScript={buildBrowserStateRestoreScript(browserState) + '\n' + buildFingerprintScript(fingerprintProfile) + '\n' + buildFormInterceptScript() + '\n' + buildBrowserStateCaptureScript()}
+          onMessage={handleWebMessage}
+          onLoadingStateChange={({ nativeEvent }) => {
+            setIsLoading(nativeEvent.loading);
+            setLoadingProgress(nativeEvent.progress);
+          }}
+          onError={({ nativeEvent }) => {
             setIsLoading(false);
             setLoadingProgress(1);
             setAddressBarText(nativeEvent.description ? `Load error: ${nativeEvent.description}` : addressBarText);
           }}
-          onLoadProgress={({ nativeEvent }: { nativeEvent: { progress: number } }) => {
-            setLoadingProgress(nativeEvent.progress);
+          onNavigationStateChange={({ nativeEvent }) => onNavigationStateChange(nativeEvent)}
+          onDownload={({ nativeEvent }) => {
+            const fileName = typeof nativeEvent.fileName === "string" ? nativeEvent.fileName : "Download";
+            Alert.alert("Download started", `${fileName} is being saved inside this account's profile.`);
           }}
-          onLoadEnd={() => { setIsLoading(false); setLoadingProgress(1); }}
-          onNavigationStateChange={onNavigationStateChange}
-          onShouldStartLoadWithRequest={onShouldStartLoadWithRequest}
-          allowsBackForwardNavigationGestures
-          javaScriptEnabled
-          domStorageEnabled
-          sharedCookiesEnabled={false}
-          thirdPartyCookiesEnabled={false}
-          cacheEnabled={false}
-          incognito={false}
-          javaScriptCanOpenWindowsAutomatically={false}
-          setSupportMultipleWindows={false}
-          allowsFullscreenVideo={false}
-          mixedContentMode="never"
-          contentInsetAdjustmentBehavior="never"
+          onPermissionRequest={() => {
+            Alert.alert("Site permission blocked", "Camera, microphone and other sensitive WebView permissions are denied by default for this profile.");
+          }}
         />
       )}
 

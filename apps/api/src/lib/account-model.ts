@@ -13,6 +13,7 @@ const accountSchema = new Schema(
     fakeIp: { type: String, trim: true },
     timezone: { type: String, trim: true },
     proxyUrl: { type: String, trim: true },
+    proxyId: { type: Schema.Types.ObjectId, ref: "Proxy" },
     userAgent: { type: String },
     notes: { type: String },
     fingerprint: { type: Schema.Types.Mixed },
@@ -40,4 +41,4 @@ const accountSchema = new Schema(
 export type AccountDocument = InferSchemaType<typeof accountSchema>;
 
 export const AccountModel =
-  mongoose.models.Account ?? mongoose.model("Account", accountSchema);
+  mongoose.models.Account ?? mongoose.model("Account", accountSchema, "accounts");
