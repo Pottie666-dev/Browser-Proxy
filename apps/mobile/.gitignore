@@ -39,3 +39,7 @@ yarn-error.*
 .vercel
 
 .env
+
+# Custom Expo Go deployment outputs
+static-build/
+.metro-cache/

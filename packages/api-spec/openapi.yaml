@@ -91,7 +91,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-    put:
+    patch:
       operationId: updateAccount
       tags: [accounts]
       summary: Update an account

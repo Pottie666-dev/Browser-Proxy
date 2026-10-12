@@ -13,9 +13,13 @@ export type BrowserNavigationEvent = {
   };
 };
 
-export type BrowserLoadingEvent = { nativeEvent: { loading: boolean; progress: number } };
+export type BrowserLoadingEvent = {
+  nativeEvent: { loading: boolean; progress: number };
+};
 export type BrowserMessageEvent = { nativeEvent: { data: string } };
-export type BrowserErrorEvent = { nativeEvent: { description: string; code: number; url: string } };
+export type BrowserErrorEvent = {
+  nativeEvent: { description: string; code: number; url: string };
+};
 
 export type BrowserProfileViewProps = ViewProps & {
   profileId: string;
@@ -26,7 +30,9 @@ export type BrowserProfileViewProps = ViewProps & {
   onLoadingStateChange?: (event: BrowserLoadingEvent) => void;
   onMessage?: (event: BrowserMessageEvent) => void;
   onDownload?: (event: { nativeEvent: Record<string, unknown> }) => void;
-  onPermissionRequest?: (event: { nativeEvent: Record<string, unknown> }) => void;
+  onPermissionRequest?: (event: {
+    nativeEvent: Record<string, unknown>;
+  }) => void;
   onError?: (event: BrowserErrorEvent) => void;
 };
 
@@ -42,8 +48,11 @@ export type BrowserProfileViewRef = {
   destroy(): Promise<void>;
 };
 
-const NativeView = requireNativeViewManager<BrowserProfileViewProps>("BrowserProfile");
-export const BrowserProfileView = React.forwardRef<BrowserProfileViewRef, BrowserProfileViewProps>((props, ref) => (
-  React.createElement(NativeView, { ...props, ref: ref as never })
-));
+const NativeView = requireNativeViewManager<
+  BrowserProfileViewProps & React.RefAttributes<BrowserProfileViewRef>
+>("BrowserProfile");
+export const BrowserProfileView = React.forwardRef<
+  BrowserProfileViewRef,
+  BrowserProfileViewProps
+>((props, ref) => React.createElement(NativeView, { ...props, ref }));
 BrowserProfileView.displayName = "BrowserProfileView";

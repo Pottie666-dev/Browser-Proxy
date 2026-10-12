@@ -373,7 +373,7 @@ export const updateAccount = async (id: string,
   return customFetch<Account>(getUpdateAccountUrl(id),
   {
     ...options,
-    method: 'PUT',
+    method: 'PATCH',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(accountUpdate)
   }

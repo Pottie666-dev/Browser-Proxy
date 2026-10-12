@@ -19,7 +19,9 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { BrowserProfileView, type BrowserNavigationEvent, type BrowserProfileViewRef } from "../modules/browser-profile/src";
+import type { BrowserNavigationEvent, BrowserProfileViewRef } from "../modules/browser-profile/src";
+import { BrowserHost } from "../components/BrowserHost";
+import { getApiBaseUrl } from "../lib/api-url";
 
 import { useColors } from "@/hooks/useColors";
 import { buildFingerprintScript, buildFormInterceptScript, type FingerprintProfile } from "@/lib/fingerprint";
@@ -53,18 +55,6 @@ function pageTitleFromUrl(url: string): string {
   } catch {
     return url || "New Tab";
   }
-}
-
-function getApiBaseUrl(): string {
-  const rawBase =
-    process.env.EXPO_PUBLIC_API_URL?.trim() ??
-    process.env.EXPO_PUBLIC_DOMAIN?.trim();
-
-  if (!rawBase) return "http://192.168.0.8:3000";
-
-  return rawBase.startsWith("http://") || rawBase.startsWith("https://")
-    ? rawBase.replace(/\/+$/, "")
-    : `https://${rawBase.replace(/\/+$/, "")}`;
 }
 
 function buildProxyUrl(targetUrl: string, accountId: string): string {
@@ -410,6 +400,23 @@ export default function BrowserScreen() {
     },
     [isEditing, currentProxyUrl, activeTabId]
   );
+
+
+  const onShouldStartLoadWithRequest = useCallback((request: { url: string }) => {
+    try {
+      const target = new URL(request.url);
+      const api = new URL(apiBaseUrl);
+      if (target.origin === api.origin && target.pathname === "/api/proxy") {
+        return Boolean(target.searchParams.get("url")) && target.searchParams.get("accountId") === accountId;
+      }
+      if (target.protocol === "http:" || target.protocol === "https:") {
+        setAddressBarText(request.url);
+        setTimeout(() => setCurrentProxyUrl(buildProxyUrl(request.url, accountId)), 0);
+        return false;
+      }
+      return target.protocol === "about:";
+    } catch { return false; }
+  }, [accountId, apiBaseUrl]);
 
 
 
@@ -785,7 +792,9 @@ export default function BrowserScreen() {
           ) : null}
         </View>
       ) : (
-        <BrowserProfileView
+        <BrowserHost
+          nativeEnabled={Platform.OS === "android" && process.env.EXPO_PUBLIC_NATIVE_BROWSER_ENABLED === "1" && nativeCapabilities?.supportsNativeWebViewHost === true}
+          onShouldStartLoadWithRequest={onShouldStartLoadWithRequest}
           ref={webViewRef}
           profileId={accountId}
           url={currentProxyUrl}
@@ -805,7 +814,9 @@ export default function BrowserScreen() {
           onNavigationStateChange={({ nativeEvent }) => onNavigationStateChange(nativeEvent)}
           onDownload={({ nativeEvent }) => {
             const fileName = typeof nativeEvent.fileName === "string" ? nativeEvent.fileName : "Download";
-            Alert.alert("Download started", `${fileName} is being saved inside this account's profile.`);
+            Alert.alert("Download requested", nativeCapabilities?.supportsDownloadIsolation
+              ? `${fileName} is being saved inside this account's profile.`
+              : `${fileName}: profile-isolated downloads require the custom native host.`);
           }}
           onPermissionRequest={() => {
             Alert.alert("Site permission blocked", "Camera, microphone and other sensitive WebView permissions are denied by default for this profile.");

@@ -4,15 +4,16 @@
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
-    "dev": "expo start --host lan --port 8081",
-    "build": "node scripts/build.js",
+    "dev": "node scripts/dev.js",
+    "build": "expo export --platform android --output-dir dist --max-workers 2",
     "serve": "node server/serve.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "prebuild:android": "expo prebuild --platform android",
     "android:native": "expo run:android",
-    "doctor": "expo doctor",
+    "doctor": "expo install --check",
     "android": "expo run:android",
-    "ios": "expo run:ios"
+    "ios": "expo run:ios",
+    "build:deployment": "node scripts/build.js"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
@@ -63,6 +64,7 @@
     "react-native-web": "^0.21.0",
     "react-native-worklets": "0.5.1",
     "zod": "catalog:",
-    "zod-validation-error": "^3.4.0"
+    "zod-validation-error": "^3.4.0",
+    "expo-modules-core": "~3.0.30"
   }
 }

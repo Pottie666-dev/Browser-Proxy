@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Request, type Response, type NextFunction } from "express";
 import { AccountModel } from "../lib/account-model";
 import { connectMongo, hasMongoUri } from "../lib/mongo";
 import { generateIdentity, mergeFingerprint } from "../lib/identity";
@@ -267,7 +267,15 @@ router.get("/:id", async (req, res, next) => {
   }
 });
 
-router.patch("/:id", async (req, res, next) => {
+// PUT remains an alias for previously generated clients. Both methods preserve
+// unspecified fields and the existing identity profile. PATCH is canonical.
+router.route("/:id").patch(updateAccount).put(updateAccount);
+
+async function updateAccount(
+  req: Request<{ id: string }>,
+  res: Response,
+  next: NextFunction,
+) {
   try {
     const body = cleanBody(req.body);
     const fpPatch = bodyFingerprint(body);
@@ -333,7 +341,7 @@ router.patch("/:id", async (req, res, next) => {
   } catch (error) {
     next(error);
   }
-});
+}
 
 router.delete("/:id", async (req, res, next) => {
   try {

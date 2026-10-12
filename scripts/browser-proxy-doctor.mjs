@@ -17,11 +17,8 @@ for (const [label, path] of checks) {
 }
 
 console.log("");
-console.log("Stage 8A status:");
-console.log("OK JS identity/runtime isolation");
-console.log("OK Browser state persistence");
-console.log("OK Native isolation abstraction");
-console.log("TODO Native Android WebView profile module");
-console.log("TODO Custom dev build / prebuild");
+console.log("Stage 1: standard WebView is the default browser host.");
+console.log("Run pnpm run typecheck, pnpm test, and pnpm run build for runtime/build validation.");
+console.log("Stage 2: custom Android host, native isolation, downloads, and permissions remain unverified.");
 
 process.exit(ok ? 0 : 1);

@@ -13,20 +13,11 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { setBaseUrl } from "@workspace/api-client-react";
+import { getApiBaseUrl } from "../lib/api-url";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
-const rawApiDomain =
-  process.env.EXPO_PUBLIC_API_URL?.trim() ??
-  process.env.EXPO_PUBLIC_DOMAIN?.trim();
-
-setBaseUrl(
-  rawApiDomain
-    ? rawApiDomain.startsWith("http://") || rawApiDomain.startsWith("https://")
-      ? rawApiDomain.replace(/\/+$/, "")
-      : `https://${rawApiDomain.replace(/\/+$/, "")}`
-    : "http://192.168.0.8:3000"
-);
+setBaseUrl(getApiBaseUrl());
 
 SplashScreen.preventAutoHideAsync();
 

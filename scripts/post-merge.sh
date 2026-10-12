@@ -1,4 +1,5 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")/.."
 pnpm install --frozen-lockfile
-pnpm --filter db push
+pnpm run typecheck:libs
