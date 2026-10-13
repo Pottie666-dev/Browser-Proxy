@@ -65,3 +65,6 @@ apps/android-companion/**/build/
 apps/android-companion/local.properties
 
 apps/android-companion/.kotlin/
+
+# Local Gradle outputs from the pinned BlurView source module
+apps/mobile/vendor/**/build/
