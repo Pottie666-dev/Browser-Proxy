@@ -14,6 +14,8 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { setBaseUrl } from "@workspace/api-client-react";
 import { getApiBaseUrl } from "../lib/api-url";
+import { AuthProvider } from "../lib/auth";
+import { AuthGate } from "../components/AuthGate";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
@@ -74,7 +76,7 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <GestureHandlerRootView style={{ flex: 1 }}>
             <KeyboardProvider>
-              <RootLayoutNav />
+              <AuthProvider><AuthGate><RootLayoutNav /></AuthGate></AuthProvider>
             </KeyboardProvider>
           </GestureHandlerRootView>
         </QueryClientProvider>

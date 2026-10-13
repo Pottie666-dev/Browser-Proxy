@@ -1,3 +1,4 @@
+import { authenticatedFetch, useAuth } from "../lib/auth";
 import { Feather } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
@@ -120,6 +121,8 @@ const debugStyles = StyleSheet.create({
 });
 
 export default function BrowserScreen() {
+  const auth = useAuth();
+  const [browserAuthorized, setBrowserAuthorized] = useState(false);
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const webViewRef = useRef<BrowserProfileViewRef>(null);
@@ -190,6 +193,19 @@ export default function BrowserScreen() {
   const browserProfilePaths = getBrowserProfilePaths(accountId);
   const isolationCapabilities = getIsolationCapabilities();
   const nativeIsolationAvailable = isNativeIsolationAvailable();
+  useEffect(() => {
+    let cancelled = false;
+    setBrowserAuthorized(false);
+    authenticatedFetch("/api/auth/browser-grant", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ accountId }) })
+      .then(response => response.json()).then(({ grant }) => {
+        if (cancelled) return;
+        setCurrentProxyUrl(current => { const url = new URL(current); url.searchParams.set("grant", grant); return url.toString(); });
+        setBrowserAuthorized(true);
+      }).catch(() => { if (!cancelled) setAddressBarText("Browser authorization failed. Sign in again."); });
+    authenticatedFetch(`/api/accounts/${encodeURIComponent(accountId)}/browser-state`).then(response => response.json()).then(state => { if (!cancelled) setBrowserState(state); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [accountId, auth.session?.accessToken]);
+
 
   const topInset = Platform.OS === "web" ? 67 : insets.top;
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
@@ -276,7 +292,7 @@ export default function BrowserScreen() {
       updatedAt: new Date().toISOString(),
     };
     setBrowserState(merged);
-    await fetch(`${apiBaseUrl}/api/accounts/${encodeURIComponent(accountId)}/browser-state`, {
+    await authenticatedFetch(`/api/accounts/${encodeURIComponent(accountId)}/browser-state`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(merged),
@@ -357,7 +373,7 @@ export default function BrowserScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              await fetch(`${apiBaseUrl}/api/accounts/${encodeURIComponent(accountId)}/browser-state`, {
+              await authenticatedFetch(`/api/accounts/${encodeURIComponent(accountId)}/browser-state`, {
                 method: "DELETE",
               });
               await webViewRef.current?.clearProfileData();
@@ -792,7 +808,7 @@ export default function BrowserScreen() {
           ) : null}
         </View>
       ) : (
-        <BrowserHost
+        browserAuthorized ? <BrowserHost
           nativeEnabled={Platform.OS === "android" && process.env.EXPO_PUBLIC_NATIVE_BROWSER_ENABLED === "1" && nativeCapabilities?.supportsNativeWebViewHost === true}
           onShouldStartLoadWithRequest={onShouldStartLoadWithRequest}
           ref={webViewRef}
@@ -821,7 +837,7 @@ export default function BrowserScreen() {
           onPermissionRequest={() => {
             Alert.alert("Site permission blocked", "Camera, microphone and other sensitive WebView permissions are denied by default for this profile.");
           }}
-        />
+        /> : <ActivityIndicator style={{ flex: 1 }} />
       )}
 
       <View style={[styles.bottomBar, { paddingBottom: bottomInset, backgroundColor: colors.card, borderTopColor: colors.border }]}>

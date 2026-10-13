@@ -67,7 +67,7 @@ export function buildBrowserStateCaptureScript() {
   window.__BROWSER_PROXY_STATE_CAPTURE_INSTALLED__ = true;
 
   function readStorage(storage) {
-    const out = {};
+    const out = Object.create(null);
     try {
       for (let i = 0; i < storage.length; i++) {
         const key = storage.key(i);
@@ -78,7 +78,7 @@ export function buildBrowserStateCaptureScript() {
   }
 
   function readCookies() {
-    const out = {};
+    const out = Object.create(null);
     try {
       String(document.cookie || "").split(";").forEach(function(part) {
         const trimmed = part.trim();

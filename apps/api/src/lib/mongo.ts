@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { logger } from "./logger";
+import { memoryMode } from "./security";
 
 let connectionPromise: Promise<typeof mongoose> | null = null;
 
@@ -11,7 +12,8 @@ export async function connectMongo(): Promise<typeof mongoose | null> {
   const uri = process.env.MONGODB_URI?.trim();
 
   if (!uri) {
-    return null;
+    if (memoryMode()) return null;
+    throw new Error("MongoDB configuration is required");
   }
 
   if (mongoose.connection.readyState === 1) {
@@ -29,7 +31,7 @@ export async function connectMongo(): Promise<typeof mongoose | null> {
       })
       .catch((error) => {
         connectionPromise = null;
-        logger.error({ error }, "MongoDB connection failed");
+        logger.error("MongoDB connection failed");
         throw error;
       });
   }

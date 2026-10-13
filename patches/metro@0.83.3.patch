@@ -1,0 +1,30 @@
+diff --git a/src/Assets.js b/src/Assets.js
+index 0870a4c62c7ef9e7fb3a93c0bed74aa8ea5a765e..72dd1f5aa82351b51253f846eaec9f309b05a529 100644
+--- a/src/Assets.js
++++ b/src/Assets.js
+@@ -167,9 +167,7 @@ async function getAssetData(
+   assetUrlPath = (0, _pathUtils.normalizePathSeparatorsToPosix)(assetUrlPath);
+   const isImage = isAssetTypeAnImage(_path.default.extname(assetPath).slice(1));
+   const assetInfo = await getAbsoluteAssetInfo(assetPath, platform);
+-  const isImageInput = assetInfo.files[0].includes(".zip/")
+-    ? _fs.default.readFileSync(assetInfo.files[0])
+-    : assetInfo.files[0];
++  const isImageInput = isImage ? _fs.default.readFileSync(assetInfo.files[0]) : null;
+   const dimensions = isImage ? (0, _imageSize.default)(isImageInput) : null;
+   const scale = assetInfo.scales[0];
+   const assetData = {
+diff --git a/src/Assets.js.flow b/src/Assets.js.flow
+index 3abcf7e96c2f2d376009dcd0ab61a77c70a1d880..97af2184921ac28c913a07f6cb7a6d7c4f12b2f1 100644
+--- a/src/Assets.js.flow
++++ b/src/Assets.js.flow
+@@ -217,9 +217,7 @@ export async function getAssetData(
+   const isImage = isAssetTypeAnImage(path.extname(assetPath).slice(1));
+   const assetInfo = await getAbsoluteAssetInfo(assetPath, platform);
+ 
+-  const isImageInput = assetInfo.files[0].includes('.zip/')
+-    ? fs.readFileSync(assetInfo.files[0])
+-    : assetInfo.files[0];
++  const isImageInput = isImage ? fs.readFileSync(assetInfo.files[0]) : null;
+   const dimensions = isImage ? getImageSize(isImageInput) : null;
+   const scale = assetInfo.scales[0];
+ 

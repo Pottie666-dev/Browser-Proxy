@@ -47,3 +47,10 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Runtime credentials and local security configuration
+.env
+.env.*
+!.env.example
+*.key
+*.pem

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { randomBytes } from "node:crypto";
 import { after, before, test } from "node:test";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
@@ -14,11 +15,15 @@ import {
   listAccounts,
   updateAccount,
 } from "../../../packages/api-client-react/src/generated/api.ts";
-import { setBaseUrl } from "../../../packages/api-client-react/src/custom-fetch.ts";
+import {
+  setAuthTokenGetter,
+  setBaseUrl,
+} from "../../../packages/api-client-react/src/custom-fetch.ts";
 
 let child;
 let baseUrl;
 let logs = "";
+let authToken;
 
 before(async () => {
   const portProbe = createServer();
@@ -36,7 +41,10 @@ before(async () => {
       MONGODB_URI: "",
       HOST: "127.0.0.1",
       PORT: String(port),
-      NODE_ENV: "development",
+      NODE_ENV: "test",
+      ALLOW_IN_MEMORY_DB: "true",
+      ALLOW_REGISTRATION: "true",
+      ACCOUNT_ENCRYPTION_KEY: randomBytes(32).toString("base64"),
     },
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -54,6 +62,17 @@ before(async () => {
         (await healthCheck({ signal: AbortSignal.timeout(1000) })).status,
         "ok",
       );
+      const auth = await fetch(`${baseUrl}/api/auth/register`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          email: "regression@example.invalid",
+          password: "Synthetic-Regression-Password",
+        }),
+      });
+      assert.equal(auth.status, 201);
+      authToken = (await auth.json()).accessToken;
+      setAuthTokenGetter(() => authToken);
       return;
     } catch {
       await delay(100);
@@ -64,6 +83,7 @@ before(async () => {
 
 after(async () => {
   setBaseUrl(null);
+  setAuthTokenGetter(null);
   if (child && child.exitCode === null && child.signalCode === null) {
     const exited = once(child, "exit");
     child.kill("SIGTERM");
@@ -81,7 +101,10 @@ const fixture = () => ({
 const jsonRequest = async (path, method, body) => {
   const response = await fetch(`${baseUrl}${path}`, {
     method,
-    headers: { "content-type": "application/json" },
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${authToken}`,
+    },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   return {
@@ -218,22 +241,25 @@ test("missing accounts return 404 for updates and browser-state operations", asy
   }
 });
 
-test("existing proxy fetch still returns upstream content and status", async () => {
+test("proxy blocks private targets without contacting the upstream fixture", async () => {
+  let hits = 0;
   const upstream = createHttpServer((_req, res) => {
-    res.writeHead(202, { "content-type": "text/html" });
-    res.end("<html>synthetic proxy fixture</html>");
+    hits++;
+    res.end("fixture");
   });
   upstream.listen(0, "127.0.0.1");
   await once(upstream, "listening");
+  const account = await createAccount(fixture());
   try {
     const url = `http://127.0.0.1:${upstream.address().port}/fixture`;
     const response = await fetch(
-      `${baseUrl}/api/proxy?url=${encodeURIComponent(url)}`,
+      `${baseUrl}/api/proxy?accountId=${account.id}&url=${encodeURIComponent(url)}`,
+      { headers: { authorization: `Bearer ${authToken}` } },
     );
-    assert.equal(response.status, 202);
-    assert.match(await response.text(), /synthetic proxy fixture/);
-    assert.equal(response.headers.get("cache-control"), "no-store");
+    assert.ok([400, 403].includes(response.status));
+    assert.equal(hits, 0);
   } finally {
+    await deleteAccount(account.id);
     await new Promise((resolve) => upstream.close(resolve));
   }
 });

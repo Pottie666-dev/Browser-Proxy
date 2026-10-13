@@ -1,3 +1,4 @@
+import * as Crypto from "expo-crypto";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
@@ -20,6 +21,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { useColors } from "@/hooks/useColors";
 import {
+  getAccount,
   useCreateAccount,
   useUpdateAccount,
   getListAccountsQueryKey,
@@ -76,17 +78,9 @@ function generateUsername(name: string, surname: string) {
   return pick(patterns);
 }
 
-function generatePassword(name: string, surname: string, idNumber: string) {
-  const f = slugify(name), s = slugify(surname), id = slugify(idNumber);
-  if (!s) return "";
-  const part = s.slice(0, randInt(3, Math.min(5, s.length)));
-  const idPart = id ? id.slice(0, randInt(2, Math.min(4, id.length))) : "";
-  const num = randInt(10, 999);
-  const word = pick(NATURE_WORDS);
-  const base = Math.random() < 0.4
-    ? `${part.charAt(0).toUpperCase()}${part.slice(1)}${num}${word}`
-    : `${part}${num}${word}`;
-  return idPart ? `${base}${idPart}` : base;
+function generatePassword(_name: string, _surname: string, _idNumber: string) {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@";
+  return Array.from(Crypto.getRandomBytes(24), b => alphabet[b & 63]).join("");
 }
 
 function generateWalletName(surname: string) {
@@ -237,6 +231,7 @@ export default function AccountFormScreen() {
     image1?: string; image2?: string; fingerprintTimezone?: string;
   }>();
   const isEdit = !!params.accountId;
+  const [credentialsLoaded, setCredentialsLoaded] = useState(!isEdit);
 
   const [name, setName] = useState(params.name ?? "");
   const [surname, setSurname] = useState(params.surname ?? "");
@@ -245,7 +240,7 @@ export default function AccountFormScreen() {
   const [password, setPassword] = useState(params.password ?? "");
   const [email, setEmail] = useState(params.email ?? "");
   const [cryptoAddress, setCryptoAddress] = useState(params.cryptoAddress ?? "");
-  const [walletName] = useState(params.walletName ?? "");
+  const [walletName, setWalletName] = useState(params.walletName ?? "");
   const [image1, setImage1] = useState<string | null>(params.image1 || null);
   const [image2, setImage2] = useState<string | null>(params.image2 || null);
   const [timezone, setTimezone] = useState(params.fingerprintTimezone || "Africa/Johannesburg");
@@ -260,6 +255,21 @@ export default function AccountFormScreen() {
   const createAccount = useCreateAccount();
   const updateAccount = useUpdateAccount();
   const isLoading = createAccount.isPending || updateAccount.isPending;
+  useEffect(() => {
+    let cancelled = false;
+    if (params.accountId) getAccount(params.accountId).then(account => {
+      if (!cancelled) {
+        setName(account.name ?? ""); setSurname(account.surname ?? ""); setUsername(account.username ?? "");
+        setEmail(account.email ?? ""); setPassword(account.password ?? ""); setWalletName(account.walletName ?? "");
+        setIdNumber(account.idNumber ?? ""); setCryptoAddress(account.cryptoAddress ?? "");
+        setImage1(account.image1 ?? null); setImage2(account.image2 ?? null);
+        const rich = account as typeof account & { fingerprint?: { timezone?: string } };
+        setTimezone(rich.fingerprint?.timezone ?? "Africa/Johannesburg"); setCredentialsLoaded(true);
+      }
+    }).catch(() => { if (!cancelled) setErrors({ password: "Unable to load account credentials" }); });
+    return () => { cancelled = true; };
+  }, [params.accountId]);
+
 
   useEffect(() => {
     if (!usernameManual && name && surname) setUsername(generateUsername(name, surname));
@@ -288,6 +298,7 @@ export default function AccountFormScreen() {
   }
 
   function handleSubmit() {
+    if (!credentialsLoaded) { setErrors({ password: "Wait for account credentials to load" }); return; }
     if (!validate()) { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error); return; }
     const payload = {
       name: name.trim(),

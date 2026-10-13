@@ -2,6 +2,8 @@ import mongoose, { Schema, type InferSchemaType } from "mongoose";
 
 const accountSchema = new Schema(
   {
+    ownerId: { type: String, required: true, index: true },
+    surname: { type: String },
     name: { type: String, required: true, trim: true, default: "New Account" },
     username: { type: String, trim: true },
     email: { type: String, trim: true },
@@ -19,13 +21,15 @@ const accountSchema = new Schema(
     fingerprint: { type: Schema.Types.Mixed },
     cookies: { type: Schema.Types.Mixed },
     metadata: { type: Schema.Types.Mixed },
+    image1: { type: String },
+    image2: { type: String },
     browserState: { type: Schema.Types.Mixed },
     favorite: { type: Boolean, default: false },
     tags: { type: [String], default: [] },
   },
   {
     timestamps: true,
-    strict: false,
+    strict: true,
     toJSON: {
       virtuals: true,
       versionKey: false,

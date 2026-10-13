@@ -7,16 +7,16 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "pnpm": "9.15.9"
+      "pnpm": "10.28.2"
     },
     "preview": {
       "distribution": "internal",
-      "pnpm": "9.15.9",
+      "pnpm": "10.28.2",
       "environment": "preview"
     },
     "production": {
       "autoIncrement": true,
-      "pnpm": "9.15.9"
+      "pnpm": "10.28.2"
     }
   },
   "submit": {
