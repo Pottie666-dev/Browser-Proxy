@@ -16,7 +16,9 @@
     "codegen": "pnpm --filter @workspace/api-spec run codegen",
     "test": "pnpm --filter @workspace/api-server run test && node --test scripts/test/*.test.mjs",
     "db:migrate": "pnpm --filter @workspace/api-server run db:migrate",
-    "test:browser:confined": "pnpm --filter @workspace/api-server run test:browser:confined"
+    "test:browser:confined": "pnpm --filter @workspace/api-server run test:browser:confined",
+    "companion:build": "cd apps/android-companion && ./gradlew :app:assembleDebug",
+    "companion:test": "cd apps/android-companion && ./gradlew :app:testDebugUnitTest :app:lintDebug"
   },
   "private": true,
   "devDependencies": {

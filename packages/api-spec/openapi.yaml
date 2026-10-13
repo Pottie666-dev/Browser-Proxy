@@ -351,7 +351,7 @@ paths:
       operationId: resetBrowserProfile
       tags:
       - browser
-      summary: Explicitly clear only this account’s browser data and downloads
+      summary: "Explicitly clear only this account\u2019s browser data and downloads"
       parameters:
       - *id001
       responses:
@@ -399,6 +399,127 @@ paths:
           description: Rate limited
         '503':
           description: Worker, required proxy or proxy-routed DNS unavailable
+  /devices:
+    get:
+      operationId: listDevices
+      tags:
+      - devices
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CompanionDevice'
+  /devices/pairing:
+    post:
+      operationId: createDevicePairing
+      tags:
+      - devices
+      responses:
+        '201':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PairingCode'
+  /devices/register:
+    post:
+      operationId: registerDevice
+      tags:
+      - devices
+      responses:
+        '201':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceCredential'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterDeviceRequest'
+      security: []
+  /devices/self/rotate:
+    post:
+      operationId: rotateDeviceToken
+      tags:
+      - devices
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceCredential'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RotateDeviceTokenRequest'
+      description: Requires a device bearer credential, not a controller session.
+  /devices/self/heartbeat:
+    post:
+      operationId: deviceHeartbeat
+      tags:
+      - devices
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanionDevice'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceHeartbeatRequest'
+      description: Requires a device bearer credential, not a controller session.
+  /devices/{id}/assignment:
+    patch:
+      operationId: assignDevice
+      tags:
+      - devices
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanionDevice'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignDeviceRequest'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+  /devices/{id}:
+    delete:
+      operationId: revokeDevice
+      tags:
+      - devices
+      responses:
+        '204':
+          description: Success
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
 components:
   schemas:
     HealthStatus:
@@ -854,6 +975,108 @@ components:
         dns: *id002
         proxy:
           type: boolean
+    CompanionDevice:
+      type: object
+      required:
+      - id
+      - name
+      - online
+      - revoked
+      - status
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        accountId:
+          type:
+          - string
+          - 'null'
+        online:
+          type: boolean
+        revoked:
+          type: boolean
+        lastSeenAt:
+          type:
+          - string
+          - 'null'
+        status:
+          type: object
+          additionalProperties: true
+    PairingCode:
+      type: object
+      required:
+      - code
+      - expiresAt
+      properties:
+        code:
+          type: string
+        expiresAt:
+          type: string
+    DeviceCredential:
+      type: object
+      required:
+      - token
+      - expiresAt
+      properties:
+        token:
+          type: string
+        expiresAt:
+          type: string
+        device:
+          $ref: '#/components/schemas/CompanionDevice'
+    RegisterDeviceRequest:
+      type: object
+      required:
+      - code
+      - name
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+    RotateDeviceTokenRequest:
+      type: object
+    DeviceHeartbeatRequest:
+      type: object
+      required:
+      - batteryPercent
+      - charging
+      - temperatureC
+      - androidVersion
+      - model
+      - captureActive
+      - accessibilityEnabled
+      properties:
+        batteryPercent:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+          maximum: 100
+        charging:
+          type: boolean
+        temperatureC:
+          type:
+          - number
+          - 'null'
+        androidVersion:
+          type: string
+        model:
+          type: string
+        captureActive:
+          type: boolean
+        accessibilityEnabled:
+          type: boolean
+    AssignDeviceRequest:
+      type: object
+      required:
+      - accountId
+      properties:
+        accountId:
+          type:
+          - string
+          - 'null'
   securitySchemes:
     bearerAuth:
       type: http

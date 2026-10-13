@@ -25,15 +25,22 @@ import type {
   Account,
   AccountInput,
   AccountUpdate,
+  AssignDeviceRequest,
   AuthSession,
   AuthUser,
   BrowserCommand,
   BrowserStatus,
+  CompanionDevice,
+  DeviceCredential,
+  DeviceHeartbeatRequest,
   EgressVerification,
   ErrorResponse,
   HealthStatus,
   LoginInput,
+  PairingCode,
   RefreshInput,
+  RegisterDeviceRequest,
+  RotateDeviceTokenRequest,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -2262,3 +2269,757 @@ export function useDownloadBrowserFile<
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+export const getListDevicesUrl = () => {
+  return `/api/devices`;
+};
+
+export const listDevices = async (
+  options?: Parameters<typeof customFetch>[1],
+): Promise<CompanionDevice[]> => {
+  return customFetch<CompanionDevice[]>(getListDevicesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListDevicesQueryKey = () => {
+  return [`/api/devices`] as const;
+};
+
+export const getListDevicesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listDevices>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: Partial<
+    UseQueryOptions<Awaited<ReturnType<typeof listDevices>>, TError, TData>
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListDevicesQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listDevices>>> = ({
+    signal,
+  }) => listDevices({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listDevices>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type ListDevicesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listDevices>>
+>;
+export type ListDevicesQueryError = ErrorType<unknown>;
+
+export function useListDevices<
+  TData = Awaited<ReturnType<typeof listDevices>>,
+  TError = ErrorType<unknown>,
+>(
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listDevices>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listDevices>>,
+          TError,
+          Awaited<ReturnType<typeof listDevices>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useListDevices<
+  TData = Awaited<ReturnType<typeof listDevices>>,
+  TError = ErrorType<unknown>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listDevices>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listDevices>>,
+          TError,
+          Awaited<ReturnType<typeof listDevices>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useListDevices<
+  TData = Awaited<ReturnType<typeof listDevices>>,
+  TError = ErrorType<unknown>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listDevices>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+
+export function useListDevices<
+  TData = Awaited<ReturnType<typeof listDevices>>,
+  TError = ErrorType<unknown>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listDevices>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getListDevicesQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getCreateDevicePairingUrl = () => {
+  return `/api/devices/pairing`;
+};
+
+export const createDevicePairing = async (
+  options?: Parameters<typeof customFetch>[1],
+): Promise<PairingCode> => {
+  return customFetch<PairingCode>(getCreateDevicePairingUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getCreateDevicePairingMutationKey = () =>
+  ["createDevicePairing"] as const;
+
+export const getCreateDevicePairingMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createDevicePairing>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createDevicePairing>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = getCreateDevicePairingMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createDevicePairing>>,
+    void
+  > = () => {
+    return createDevicePairing(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateDevicePairingMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createDevicePairing>>
+>;
+
+export type CreateDevicePairingMutationError = ErrorType<unknown>;
+
+export const useCreateDevicePairing = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof createDevicePairing>>,
+      TError,
+      void,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof createDevicePairing>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(
+    getCreateDevicePairingMutationOptions(options),
+    queryClient,
+  );
+};
+
+export const getRegisterDeviceUrl = () => {
+  return `/api/devices/register`;
+};
+
+export const registerDevice = async (
+  registerDeviceRequest: RegisterDeviceRequest,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<DeviceCredential> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<
+      string | readonly string[] | undefined
+    >(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return customFetch<DeviceCredential>(getRegisterDeviceUrl(), {
+    ...options,
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getHeaders(options?.headers),
+    },
+    body: JSON.stringify(registerDeviceRequest),
+  });
+};
+
+export const getRegisterDeviceMutationKey = () => ["registerDevice"] as const;
+
+export const getRegisterDeviceMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof registerDevice>>,
+    TError,
+    RegisterDeviceMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof registerDevice>>,
+  TError,
+  RegisterDeviceMutationVariables,
+  TContext
+> => {
+  const mutationKey = getRegisterDeviceMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof registerDevice>>,
+    RegisterDeviceMutationVariables
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return registerDevice(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RegisterDeviceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof registerDevice>>
+>;
+export type RegisterDeviceMutationBody = BodyType<RegisterDeviceRequest>;
+export type RegisterDeviceMutationError = ErrorType<unknown>;
+export type RegisterDeviceMutationVariables = {
+  data: BodyType<RegisterDeviceRequest>;
+};
+
+export const useRegisterDevice = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof registerDevice>>,
+      TError,
+      RegisterDeviceMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof registerDevice>>,
+  TError,
+  RegisterDeviceMutationVariables,
+  TContext
+> => {
+  return useMutation(getRegisterDeviceMutationOptions(options), queryClient);
+};
+
+export const getRotateDeviceTokenUrl = () => {
+  return `/api/devices/self/rotate`;
+};
+
+/**
+ * Requires a device bearer credential, not a controller session.
+ */
+export const rotateDeviceToken = async (
+  rotateDeviceTokenRequest: RotateDeviceTokenRequest,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<DeviceCredential> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<
+      string | readonly string[] | undefined
+    >(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return customFetch<DeviceCredential>(getRotateDeviceTokenUrl(), {
+    ...options,
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getHeaders(options?.headers),
+    },
+    body: JSON.stringify(rotateDeviceTokenRequest),
+  });
+};
+
+export const getRotateDeviceTokenMutationKey = () =>
+  ["rotateDeviceToken"] as const;
+
+export const getRotateDeviceTokenMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof rotateDeviceToken>>,
+    TError,
+    RotateDeviceTokenMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof rotateDeviceToken>>,
+  TError,
+  RotateDeviceTokenMutationVariables,
+  TContext
+> => {
+  const mutationKey = getRotateDeviceTokenMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof rotateDeviceToken>>,
+    RotateDeviceTokenMutationVariables
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return rotateDeviceToken(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RotateDeviceTokenMutationResult = NonNullable<
+  Awaited<ReturnType<typeof rotateDeviceToken>>
+>;
+export type RotateDeviceTokenMutationBody = BodyType<RotateDeviceTokenRequest>;
+export type RotateDeviceTokenMutationError = ErrorType<unknown>;
+export type RotateDeviceTokenMutationVariables = {
+  data: BodyType<RotateDeviceTokenRequest>;
+};
+
+export const useRotateDeviceToken = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof rotateDeviceToken>>,
+      TError,
+      RotateDeviceTokenMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof rotateDeviceToken>>,
+  TError,
+  RotateDeviceTokenMutationVariables,
+  TContext
+> => {
+  return useMutation(getRotateDeviceTokenMutationOptions(options), queryClient);
+};
+
+export const getDeviceHeartbeatUrl = () => {
+  return `/api/devices/self/heartbeat`;
+};
+
+/**
+ * Requires a device bearer credential, not a controller session.
+ */
+export const deviceHeartbeat = async (
+  deviceHeartbeatRequest: DeviceHeartbeatRequest,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<CompanionDevice> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<
+      string | readonly string[] | undefined
+    >(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return customFetch<CompanionDevice>(getDeviceHeartbeatUrl(), {
+    ...options,
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getHeaders(options?.headers),
+    },
+    body: JSON.stringify(deviceHeartbeatRequest),
+  });
+};
+
+export const getDeviceHeartbeatMutationKey = () => ["deviceHeartbeat"] as const;
+
+export const getDeviceHeartbeatMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deviceHeartbeat>>,
+    TError,
+    DeviceHeartbeatMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deviceHeartbeat>>,
+  TError,
+  DeviceHeartbeatMutationVariables,
+  TContext
+> => {
+  const mutationKey = getDeviceHeartbeatMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deviceHeartbeat>>,
+    DeviceHeartbeatMutationVariables
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return deviceHeartbeat(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeviceHeartbeatMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deviceHeartbeat>>
+>;
+export type DeviceHeartbeatMutationBody = BodyType<DeviceHeartbeatRequest>;
+export type DeviceHeartbeatMutationError = ErrorType<unknown>;
+export type DeviceHeartbeatMutationVariables = {
+  data: BodyType<DeviceHeartbeatRequest>;
+};
+
+export const useDeviceHeartbeat = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof deviceHeartbeat>>,
+      TError,
+      DeviceHeartbeatMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof deviceHeartbeat>>,
+  TError,
+  DeviceHeartbeatMutationVariables,
+  TContext
+> => {
+  return useMutation(getDeviceHeartbeatMutationOptions(options), queryClient);
+};
+
+export const getAssignDeviceUrl = (id: string) => {
+  return `/api/devices/${id}/assignment`;
+};
+
+export const assignDevice = async (
+  id: string,
+  assignDeviceRequest: AssignDeviceRequest,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<CompanionDevice> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<
+      string | readonly string[] | undefined
+    >(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return customFetch<CompanionDevice>(getAssignDeviceUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...getHeaders(options?.headers),
+    },
+    body: JSON.stringify(assignDeviceRequest),
+  });
+};
+
+export const getAssignDeviceMutationKey = () => ["assignDevice"] as const;
+
+export const getAssignDeviceMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof assignDevice>>,
+    TError,
+    AssignDeviceMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof assignDevice>>,
+  TError,
+  AssignDeviceMutationVariables,
+  TContext
+> => {
+  const mutationKey = getAssignDeviceMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof assignDevice>>,
+    AssignDeviceMutationVariables
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return assignDevice(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AssignDeviceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof assignDevice>>
+>;
+export type AssignDeviceMutationBody = BodyType<AssignDeviceRequest>;
+export type AssignDeviceMutationError = ErrorType<unknown>;
+export type AssignDeviceMutationVariables = {
+  id: string;
+  data: BodyType<AssignDeviceRequest>;
+};
+
+export const useAssignDevice = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof assignDevice>>,
+      TError,
+      AssignDeviceMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof assignDevice>>,
+  TError,
+  AssignDeviceMutationVariables,
+  TContext
+> => {
+  return useMutation(getAssignDeviceMutationOptions(options), queryClient);
+};
+
+export const getRevokeDeviceUrl = (id: string) => {
+  return `/api/devices/${id}`;
+};
+
+export const revokeDevice = async (
+  id: string,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<void> => {
+  return customFetch<void>(getRevokeDeviceUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getRevokeDeviceMutationKey = () => ["revokeDevice"] as const;
+
+export const getRevokeDeviceMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof revokeDevice>>,
+    TError,
+    RevokeDeviceMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof revokeDevice>>,
+  TError,
+  RevokeDeviceMutationVariables,
+  TContext
+> => {
+  const mutationKey = getRevokeDeviceMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof revokeDevice>>,
+    RevokeDeviceMutationVariables
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return revokeDevice(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RevokeDeviceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof revokeDevice>>
+>;
+
+export type RevokeDeviceMutationError = ErrorType<unknown>;
+export type RevokeDeviceMutationVariables = { id: string };
+
+export const useRevokeDevice = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof revokeDevice>>,
+      TError,
+      RevokeDeviceMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof revokeDevice>>,
+  TError,
+  RevokeDeviceMutationVariables,
+  TContext
+> => {
+  return useMutation(getRevokeDeviceMutationOptions(options), queryClient);
+};

@@ -518,3 +518,116 @@ export const DownloadBrowserFileParams = zod.object({
 });
 
 export const DownloadBrowserFileResponse = zod.unknown();
+
+export const ListDevicesResponseItem = zod.object({
+  id: zod.string(),
+  name: zod.string(),
+  accountId: zod.string().nullish(),
+  online: zod.boolean(),
+  revoked: zod.boolean(),
+  lastSeenAt: zod.string().nullish(),
+  status: zod.record(zod.string(), zod.unknown()),
+});
+export const ListDevicesResponse = zod.array(ListDevicesResponseItem);
+
+export const CreateDevicePairingResponse = zod.object({
+  code: zod.string(),
+  expiresAt: zod.string(),
+});
+
+export const RegisterDeviceBody = zod.object({
+  code: zod.string(),
+  name: zod.string(),
+});
+
+export const RegisterDeviceResponse = zod.object({
+  token: zod.string(),
+  expiresAt: zod.string(),
+  device: zod
+    .object({
+      id: zod.string(),
+      name: zod.string(),
+      accountId: zod.string().nullish(),
+      online: zod.boolean(),
+      revoked: zod.boolean(),
+      lastSeenAt: zod.string().nullish(),
+      status: zod.record(zod.string(), zod.unknown()),
+    })
+    .optional(),
+});
+
+/**
+ * Requires a device bearer credential, not a controller session.
+ */
+export const RotateDeviceTokenBody = zod.object({}).passthrough();
+
+export const RotateDeviceTokenResponse = zod.object({
+  token: zod.string(),
+  expiresAt: zod.string(),
+  device: zod
+    .object({
+      id: zod.string(),
+      name: zod.string(),
+      accountId: zod.string().nullish(),
+      online: zod.boolean(),
+      revoked: zod.boolean(),
+      lastSeenAt: zod.string().nullish(),
+      status: zod.record(zod.string(), zod.unknown()),
+    })
+    .optional(),
+});
+
+/**
+ * Requires a device bearer credential, not a controller session.
+ */
+export const deviceHeartbeatBodyBatteryPercentMin = 0;
+export const deviceHeartbeatBodyBatteryPercentMax = 100;
+
+export const DeviceHeartbeatBody = zod.object({
+  batteryPercent: zod
+    .number()
+    .int()
+    .min(deviceHeartbeatBodyBatteryPercentMin)
+    .max(deviceHeartbeatBodyBatteryPercentMax)
+    .nullable(),
+  charging: zod.boolean(),
+  temperatureC: zod.number().nullable(),
+  androidVersion: zod.string(),
+  model: zod.string(),
+  captureActive: zod.boolean(),
+  accessibilityEnabled: zod.boolean(),
+});
+
+export const DeviceHeartbeatResponse = zod.object({
+  id: zod.string(),
+  name: zod.string(),
+  accountId: zod.string().nullish(),
+  online: zod.boolean(),
+  revoked: zod.boolean(),
+  lastSeenAt: zod.string().nullish(),
+  status: zod.record(zod.string(), zod.unknown()),
+});
+
+export const AssignDeviceParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const AssignDeviceBody = zod.object({
+  accountId: zod.string().nullable(),
+});
+
+export const AssignDeviceResponse = zod.object({
+  id: zod.string(),
+  name: zod.string(),
+  accountId: zod.string().nullish(),
+  online: zod.boolean(),
+  revoked: zod.boolean(),
+  lastSeenAt: zod.string().nullish(),
+  status: zod.record(zod.string(), zod.unknown()),
+});
+
+export const RevokeDeviceParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const RevokeDeviceResponse = zod.void();

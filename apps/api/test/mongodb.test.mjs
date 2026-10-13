@@ -129,6 +129,193 @@ test(
         );
       });
       await t.test(
+        "companion pairing replay, ownership, rotation and revocation",
+        async () => {
+          const pairing = await request("/api/devices/pairing", "POST", {});
+          assert.equal(pairing.status, 201);
+          const registration = await request(
+            "/api/devices/register",
+            "POST",
+            { code: pairing.body.code, name: "Fixture phone" },
+            null,
+          );
+          assert.equal(registration.status, 201);
+          const id = registration.body.device.id;
+          const device = { accessToken: registration.body.token };
+          assert.equal(
+            (
+              await request(
+                "/api/devices/register",
+                "POST",
+                { code: pairing.body.code, name: "Replay" },
+                null,
+              )
+            ).status,
+            401,
+          );
+          assert.equal(
+            (await request("/api/devices/self/heartbeat", "POST", {}, alice))
+              .status,
+            401,
+          );
+          assert.equal(
+            (await request("/api/devices", "GET", undefined, device)).status,
+            401,
+          );
+          assert.equal(
+            (
+              await request(
+                `/api/devices/${id}/assignment`,
+                "PATCH",
+                { accountId: null },
+                bob,
+              )
+            ).status,
+            404,
+          );
+          const mine = await request("/api/accounts", "POST", {
+            name: "Device account",
+          });
+          assert.equal(mine.status, 201);
+          assert.equal(
+            (
+              await request(`/api/devices/${id}/assignment`, "PATCH", {
+                accountId: mine.body.id,
+              })
+            ).status,
+            200,
+          );
+          assert.equal(
+            (
+              await request(`/api/devices/${id}/assignment`, "PATCH", {
+                accountId: null,
+              })
+            ).body.accountId,
+            null,
+          );
+          const status = {
+            batteryPercent: 80,
+            charging: true,
+            temperatureC: 28.5,
+            androidVersion: "14",
+            model: "Fixture",
+            captureActive: false,
+            accessibilityEnabled: false,
+          };
+          assert.equal(
+            (
+              await request(
+                "/api/devices/self/heartbeat",
+                "POST",
+                { ...status, batteryPercent: 101 },
+                device,
+              )
+            ).status,
+            400,
+          );
+          assert.equal(
+            (
+              await request(
+                "/api/devices/self/heartbeat",
+                "POST",
+                status,
+                device,
+              )
+            ).body.online,
+            true,
+          );
+          const raw = await connection.db
+            .collection("companiondevices")
+            .findOne({ _id: new mongoose.Types.ObjectId(id) });
+          assert.notEqual(raw.tokenHash, device.accessToken);
+          assert.equal(raw.tokenHash.length, 64);
+          await connection.db
+            .collection("companiondevices")
+            .updateOne(
+              { _id: new mongoose.Types.ObjectId(id) },
+              { $set: { lastSeenAt: new Date(Date.now() - 100000) } },
+            );
+          assert.equal(
+            (await request("/api/devices")).body.find((d) => d.id === id)
+              .online,
+            false,
+          );
+          const expired = await request("/api/devices/pairing", "POST", {});
+          await connection.db
+            .collection("devicepairings")
+            .updateOne(
+              {
+                codeHash: (await import("node:crypto"))
+                  .createHash("sha256")
+                  .update(expired.body.code)
+                  .digest("hex"),
+              },
+              { $set: { expiresAt: new Date(0) } },
+            );
+          assert.equal(
+            (
+              await request(
+                "/api/devices/register",
+                "POST",
+                { code: expired.body.code, name: "Expired" },
+                null,
+              )
+            ).status,
+            401,
+          );
+          const rotation = await request(
+            "/api/devices/self/rotate",
+            "POST",
+            {},
+            device,
+          );
+          assert.equal(rotation.status, 200);
+          assert.equal(
+            (
+              await request(
+                "/api/devices/self/heartbeat",
+                "POST",
+                status,
+                device,
+              )
+            ).status,
+            401,
+          );
+          device.accessToken = rotation.body.token;
+          assert.equal(
+            (
+              await request(
+                "/api/devices/self/heartbeat",
+                "POST",
+                status,
+                device,
+              )
+            ).status,
+            200,
+          );
+          assert.equal(
+            (await request(`/api/devices/${id}`, "DELETE", undefined, bob))
+              .status,
+            404,
+          );
+          assert.equal(
+            (await request(`/api/devices/${id}`, "DELETE")).status,
+            204,
+          );
+          assert.equal(
+            (
+              await request(
+                "/api/devices/self/heartbeat",
+                "POST",
+                status,
+                device,
+              )
+            ).status,
+            401,
+          );
+        },
+      );
+      await t.test(
         "account secrets, browser state and images are encrypted at rest",
         async () => {
           const created = await request("/api/accounts", "POST", {

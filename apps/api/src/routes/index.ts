@@ -6,10 +6,13 @@ import proxiesRouter from "./proxies";
 import browserRouter from "./browser";
 import authRouter from "./auth";
 
+import devicesRouter from "./devices";
+
 const router: IRouter = Router();
 
 router.use("/", healthRouter);
 router.use("/auth", authRouter);
+router.use("/devices", devicesRouter);
 router.use("/accounts/:id/browser", browserRouter);
 router.use("/accounts", accountsRouter);
 router.use("/proxy", proxyRouter);

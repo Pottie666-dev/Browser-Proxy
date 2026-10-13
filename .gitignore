@@ -58,3 +58,8 @@ Thumbs.db
 # Never commit browser cookies, databases, screenshots or downloaded account data.
 .browser-proxy-profiles/
 *.apk
+
+# Native Companion local build output
+apps/android-companion/.gradle/
+apps/android-companion/**/build/
+apps/android-companion/local.properties

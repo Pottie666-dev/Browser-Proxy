@@ -424,6 +424,7 @@ export default function AccountsScreen() {
       <View style={[styles.header, { paddingTop: topInset + 12 }]}> 
         <View>
       <TouchableOpacity onPress={() => auth.signOut()} accessibilityRole="button" accessibilityLabel="Sign out" style={{ alignSelf: "flex-end", padding: 12 }}><Text style={{ color: colors.primary }}>Sign out</Text></TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push("../device-hub")}><Text style={{color: colors.primary}}>Device Hub</Text></TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.foreground }]}>Vault</Text>
           <Text style={[styles.headerSub, { color: colors.mutedForeground }]}> 
             {accounts.length} {accounts.length === 1 ? "account" : "accounts"} · {filteredAccounts.length} shown

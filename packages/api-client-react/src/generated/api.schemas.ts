@@ -296,3 +296,58 @@ export interface EgressVerification {
   dns: string;
   proxy: boolean;
 }
+
+export type CompanionDeviceStatus = { [key: string]: unknown };
+
+export interface CompanionDevice {
+  id: string;
+  name: string;
+  /** @nullable */
+  accountId?: string | null;
+  online: boolean;
+  revoked: boolean;
+  /** @nullable */
+  lastSeenAt?: string | null;
+  status: CompanionDeviceStatus;
+}
+
+export interface PairingCode {
+  code: string;
+  expiresAt: string;
+}
+
+export interface DeviceCredential {
+  token: string;
+  expiresAt: string;
+  device?: CompanionDevice;
+}
+
+export interface RegisterDeviceRequest {
+  code: string;
+  name: string;
+}
+
+export interface RotateDeviceTokenRequest {
+  [key: string]: unknown;
+}
+
+export interface DeviceHeartbeatRequest {
+  /**
+   * @minimum 0
+   * @maximum 100
+   * @nullable
+   */
+  batteryPercent: number | null;
+  charging: boolean;
+  /** @nullable */
+  temperatureC: number | null;
+  androidVersion: string;
+  model: string;
+  captureActive: boolean;
+  accessibilityEnabled: boolean;
+}
+
+export interface AssignDeviceRequest {
+  /** @nullable */
+  accountId: string | null;
+}

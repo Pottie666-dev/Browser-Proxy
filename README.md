@@ -33,3 +33,7 @@ Read [Stage 2 results and operating requirements](docs/STAGE_2_SECURITY.md) befo
 7. Security review, device/EAS builds, deployment and recovery verification (Stage 8).
 
 Existing documentation and native browser implementation history remain in `docs/`. No hardware functionality is implied by a successful JavaScript export.
+
+## Physical Android Companion
+
+Stage 4 adds a separate Kotlin Android app (`com.browserproxy.companion`), Device Hub and secure device registration. Build, pairing steps and supported limitations: [Stage 4 Companion](docs/STAGE_4_ANDROID_COMPANION.md). Browser-only accounts continue using the isolated Stage 3 Chromium engine without device assignment.
