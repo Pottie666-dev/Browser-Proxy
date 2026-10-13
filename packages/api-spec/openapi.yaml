@@ -1,145 +1,525 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
   description: BrowserVault API - account management and proxy browsing
 servers:
-  - url: /api
-    description: Base API path
+- url: /api
+  description: Base API path
 tags:
-  - name: health
-    description: Health operations
-  - name: accounts
-    description: Account management
-  - name: proxy
-    description: Web proxy
+- name: health
+  description: Health operations
+- name: accounts
+  description: Account management
+- name: proxy
+  description: Web proxy
+- name: browser
+  description: Owned persistent Chromium profiles; no physical Android device required
 paths:
   /healthz:
     get:
       operationId: healthCheck
-      tags: [health]
+      tags:
+      - health
       summary: Health check
       description: Returns server health status
       responses:
-        "200":
+        '200':
           description: Healthy
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/HealthStatus"
-
+                $ref: '#/components/schemas/HealthStatus'
+      security: []
   /accounts:
     get:
       operationId: listAccounts
-      tags: [accounts]
+      tags:
+      - accounts
       summary: List all accounts
       responses:
-        "200":
+        '200':
           description: List of accounts
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/Account"
+                  $ref: '#/components/schemas/Account'
     post:
       operationId: createAccount
-      tags: [accounts]
+      tags:
+      - accounts
       summary: Create a new account
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/AccountInput"
+              $ref: '#/components/schemas/AccountInput'
       responses:
-        "201":
+        '201':
           description: Created account
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Account"
-        "400":
+                $ref: '#/components/schemas/Account'
+        '400':
           description: Validation error
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
+                $ref: '#/components/schemas/ErrorResponse'
   /accounts/{id}:
     get:
       operationId: getAccount
-      tags: [accounts]
+      tags:
+      - accounts
       summary: Get account by ID
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
-        "200":
+        '200':
           description: Account
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Account"
-        "404":
+                $ref: '#/components/schemas/Account'
+        '404':
           description: Not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
-    put:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
       operationId: updateAccount
-      tags: [accounts]
+      tags:
+      - accounts
       summary: Update an account
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/AccountUpdate"
+              $ref: '#/components/schemas/AccountUpdate'
       responses:
-        "200":
+        '200':
           description: Updated account
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Account"
-        "404":
+                $ref: '#/components/schemas/Account'
+        '404':
           description: Not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
     delete:
       operationId: deleteAccount
-      tags: [accounts]
+      tags:
+      - accounts
       summary: Delete an account
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
-        "204":
+        '204':
           description: Deleted
-        "404":
+        '404':
           description: Not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
+                $ref: '#/components/schemas/ErrorResponse'
+  /auth/login:
+    post:
+      operationId: loginUser
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSession'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginInput'
+  /auth/register:
+    post:
+      operationId: registerUser
+      responses:
+        '201':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSession'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginInput'
+  /auth/refresh:
+    post:
+      operationId: refreshSession
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSession'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshInput'
+  /auth/me:
+    get:
+      operationId: currentUser
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthUser'
+  /auth/logout:
+    post:
+      operationId: logoutUser
+      responses:
+        '204':
+          description: Session revoked
+  /accounts/{id}/browser:
+    get:
+      operationId: getBrowserStatus
+      tags:
+      - browser
+      summary: Start or restore this owned isolated browser profile
+      parameters:
+      - &id001
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrowserStatus'
+        '400':
+          description: Invalid command or destination
+        '401':
+          description: Authentication required
+        '404':
+          description: Owned account, tab or download not found
+        '429':
+          description: Rate limited
+        '503':
+          description: Worker, required proxy or proxy-routed DNS unavailable
+  /accounts/{id}/browser/commands:
+    post:
+      operationId: browserCommand
+      tags:
+      - browser
+      summary: Perform a bounded browser action; arbitrary JavaScript is not accepted
+      parameters:
+      - *id001
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrowserStatus'
+        '400':
+          description: Invalid command or destination
+        '401':
+          description: Authentication required
+        '404':
+          description: Owned account, tab or download not found
+        '429':
+          description: Rate limited
+        '503':
+          description: Worker, required proxy or proxy-routed DNS unavailable
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BrowserCommand'
+  /accounts/{id}/browser/frame:
+    get:
+      operationId: getBrowserFrame
+      tags:
+      - browser
+      summary: Authenticated current browser screenshot
+      parameters:
+      - *id001
+      responses:
+        '200':
+          description: Success
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Invalid command or destination
+        '401':
+          description: Authentication required
+        '404':
+          description: Owned account, tab or download not found
+        '429':
+          description: Rate limited
+        '503':
+          description: Worker, required proxy or proxy-routed DNS unavailable
+  /accounts/{id}/browser/verify-egress:
+    post:
+      operationId: verifyBrowserEgress
+      tags:
+      - browser
+      summary: Observe public IP through the account route and operator-configured
+        verifier
+      parameters:
+      - *id001
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EgressVerification'
+        '400':
+          description: Invalid command or destination
+        '401':
+          description: Authentication required
+        '404':
+          description: Owned account, tab or download not found
+        '429':
+          description: Rate limited
+        '503':
+          description: Worker, required proxy or proxy-routed DNS unavailable
+  /accounts/{id}/browser/session:
+    delete:
+      operationId: closeBrowserSession
+      tags:
+      - browser
+      summary: Close Chromium and flush persistent profile state
+      parameters:
+      - *id001
+      responses:
+        '204':
+          description: Success
+        '400':
+          description: Invalid command or destination
+        '401':
+          description: Authentication required
+        '404':
+          description: Owned account, tab or download not found
+        '429':
+          description: Rate limited
+        '503':
+          description: Worker, required proxy or proxy-routed DNS unavailable
+  /accounts/{id}/browser/profile:
+    delete:
+      operationId: resetBrowserProfile
+      tags:
+      - browser
+      summary: "Explicitly clear only this account\u2019s browser data and downloads"
+      parameters:
+      - *id001
+      responses:
+        '204':
+          description: Success
+        '400':
+          description: Invalid command or destination
+        '401':
+          description: Authentication required
+        '404':
+          description: Owned account, tab or download not found
+        '429':
+          description: Rate limited
+        '503':
+          description: Worker, required proxy or proxy-routed DNS unavailable
+  /accounts/{id}/browser/downloads/{downloadId}:
+    get:
+      operationId: downloadBrowserFile
+      tags:
+      - browser
+      summary: downloadBrowserFile
+      parameters:
+      - *id001
+      - name: downloadId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Success
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Invalid command or destination
+        '401':
+          description: Authentication required
+        '404':
+          description: Owned account, tab or download not found
+        '429':
+          description: Rate limited
+        '503':
+          description: Worker, required proxy or proxy-routed DNS unavailable
+  /devices:
+    get:
+      operationId: listDevices
+      tags:
+      - devices
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CompanionDevice'
+  /devices/pairing:
+    post:
+      operationId: createDevicePairing
+      tags:
+      - devices
+      responses:
+        '201':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PairingCode'
+  /devices/register:
+    post:
+      operationId: registerDevice
+      tags:
+      - devices
+      responses:
+        '201':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceCredential'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterDeviceRequest'
+      security: []
+  /devices/self/rotate:
+    post:
+      operationId: rotateDeviceToken
+      tags:
+      - devices
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceCredential'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RotateDeviceTokenRequest'
+      description: Requires a device bearer credential, not a controller session.
+  /devices/self/heartbeat:
+    post:
+      operationId: deviceHeartbeat
+      tags:
+      - devices
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanionDevice'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceHeartbeatRequest'
+      description: Requires a device bearer credential, not a controller session.
+  /devices/{id}/assignment:
+    patch:
+      operationId: assignDevice
+      tags:
+      - devices
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanionDevice'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignDeviceRequest'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+  /devices/{id}:
+    delete:
+      operationId: revokeDevice
+      tags:
+      - devices
+      responses:
+        '204':
+          description: Success
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
 components:
   schemas:
     HealthStatus:
@@ -148,21 +528,16 @@ components:
         status:
           type: string
       required:
-        - status
-
+      - status
     Account:
       type: object
       required:
-        - id
-        - name
-        - surname
-        - email
-        - password
-        - walletName
-        - deviceName
-        - userAgent
-        - fakeIp
-        - createdAt
+      - id
+      - name
+      - deviceName
+      - userAgent
+      - fakeIp
+      - createdAt
       properties:
         id:
           type: string
@@ -183,27 +558,60 @@ components:
         fakeIp:
           type: string
         username:
-          type: ["string", "null"]
+          type:
+          - string
+          - 'null'
         idNumber:
-          type: ["string", "null"]
+          type:
+          - string
+          - 'null'
         cryptoAddress:
-          type: ["string", "null"]
+          type:
+          - string
+          - 'null'
         image1:
-          type: ["string", "null"]
+          type:
+          - string
+          - 'null'
           description: Base64 data URI of first stored image
         image2:
-          type: ["string", "null"]
+          type:
+          - string
+          - 'null'
           description: Base64 data URI of second stored image
         createdAt:
           type: string
-
+        favorite:
+          type: boolean
+        tags:
+          type: array
+          items:
+            type: string
+        notes:
+          type:
+          - string
+          - 'null'
+        timezone:
+          type:
+          - string
+          - 'null'
+        proxyId:
+          type:
+          - string
+          - 'null'
+        fingerprint:
+          type: object
+          additionalProperties: true
+        proxyUrl:
+          type:
+          - string
+          - 'null'
+          description: Owner-visible encrypted-at-rest HTTP/HTTPS proxy URL; proxyId
+            takes precedence
     AccountInput:
       type: object
       required:
-        - name
-        - surname
-        - password
-        - walletName
+      - name
       properties:
         name:
           type: string
@@ -212,7 +620,9 @@ components:
           type: string
           minLength: 1
         email:
-          type: ["string", "null"]
+          type:
+          - string
+          - 'null'
           description: If omitted, a random email is generated from name and surname
         password:
           type: string
@@ -221,16 +631,52 @@ components:
           type: string
           minLength: 1
         username:
-          type: ["string", "null"]
+          type:
+          - string
+          - 'null'
         idNumber:
-          type: ["string", "null"]
+          type:
+          - string
+          - 'null'
         cryptoAddress:
-          type: ["string", "null"]
+          type:
+          - string
+          - 'null'
         image1:
-          type: ["string", "null"]
+          type:
+          - string
+          - 'null'
         image2:
-          type: ["string", "null"]
-
+          type:
+          - string
+          - 'null'
+        favorite:
+          type: boolean
+        tags:
+          type: array
+          items:
+            type: string
+        notes:
+          type:
+          - string
+          - 'null'
+        timezone:
+          type:
+          - string
+          - 'null'
+        proxyId:
+          type:
+          - string
+          - 'null'
+        fingerprint:
+          type: object
+          additionalProperties: true
+        proxyUrl:
+          type:
+          - string
+          - 'null'
+          description: Owner-visible encrypted-at-rest HTTP/HTTPS proxy URL; proxyId
+            takes precedence
     AccountUpdate:
       type: object
       properties:
@@ -250,20 +696,394 @@ components:
           type: string
           minLength: 1
         username:
-          type: ["string", "null"]
+          type:
+          - string
+          - 'null'
         idNumber:
-          type: ["string", "null"]
+          type:
+          - string
+          - 'null'
         cryptoAddress:
-          type: ["string", "null"]
+          type:
+          - string
+          - 'null'
         image1:
-          type: ["string", "null"]
+          type:
+          - string
+          - 'null'
         image2:
-          type: ["string", "null"]
-
+          type:
+          - string
+          - 'null'
+        favorite:
+          type: boolean
+        tags:
+          type: array
+          items:
+            type: string
+        notes:
+          type:
+          - string
+          - 'null'
+        timezone:
+          type:
+          - string
+          - 'null'
+        proxyId:
+          type:
+          - string
+          - 'null'
+        fingerprint:
+          type: object
+          additionalProperties: true
+        proxyUrl:
+          type:
+          - string
+          - 'null'
+          description: Owner-visible encrypted-at-rest HTTP/HTTPS proxy URL; proxyId
+            takes precedence
     ErrorResponse:
       type: object
       required:
-        - error
+      - error
       properties:
         error:
           type: string
+    LoginInput:
+      type: object
+      required:
+      - email
+      - password
+      additionalProperties: false
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 12
+          maxLength: 128
+    AuthSession:
+      type: object
+      required:
+      - accessToken
+      - refreshToken
+      - expiresAt
+      - userId
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        expiresAt:
+          type: string
+        userId:
+          type: string
+    RefreshInput:
+      type: object
+      required:
+      - refreshToken
+      additionalProperties: false
+      properties:
+        refreshToken:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{43}$
+    AuthUser:
+      type: object
+      required:
+      - id
+      properties:
+        id:
+          type: string
+    BrowserCommand:
+      type: object
+      additionalProperties: false
+      required:
+      - action
+      properties:
+        action:
+          type: string
+          enum:
+          - navigate
+          - new-tab
+          - switch-tab
+          - close-tab
+          - back
+          - forward
+          - reload
+          - stop
+          - tap
+          - scroll
+          - type
+          - key
+          - bookmark
+          - remove-bookmark
+          - clear-page
+          - upload
+        tabId:
+          type: string
+          format: uuid
+        url:
+          type: string
+          maxLength: 8192
+        text:
+          type: string
+          maxLength: 50000
+        x:
+          type: number
+          minimum: 0
+          maximum: 390
+        y:
+          type: number
+          minimum: 0
+          maximum: 740
+        deltaY:
+          type: number
+          minimum: -10000
+          maximum: 10000
+        name:
+          type: string
+          maxLength: 150
+        mimeType:
+          type: string
+        base64:
+          type: string
+          description: Upload data; controller limit 3 MB
+    BrowserStatus:
+      type: object
+      required:
+      - engine
+      - accountId
+      - activeTabId
+      - tabs
+      - bookmarks
+      - history
+      - downloads
+      - filePickerOpen
+      - identity
+      - egress
+      properties:
+        engine:
+          type: string
+          enum:
+          - chromium-process
+        accountId: &id002
+          type: string
+        activeTabId: *id002
+        tabs:
+          type: array
+          items:
+            type: object
+            required:
+            - id
+            - url
+            - title
+            - canGoBack
+            - canGoForward
+            properties:
+              id:
+                type: string
+                format: uuid
+              url: *id002
+              title: *id002
+              canGoBack:
+                type: boolean
+              canGoForward:
+                type: boolean
+        bookmarks:
+          type: array
+          items:
+            type: object
+            required:
+            - url
+            - title
+            properties:
+              url: *id002
+              title: *id002
+        history:
+          type: array
+          items:
+            type: object
+            required:
+            - url
+            - title
+            - visitedAt
+            properties:
+              url: *id002
+              title: *id002
+              visitedAt: *id002
+        downloads:
+          type: array
+          items:
+            type: object
+            required:
+            - id
+            - name
+            - size
+            - createdAt
+            properties:
+              id:
+                type: string
+                format: uuid
+              name: *id002
+              size:
+                type: integer
+              createdAt: *id002
+        filePickerOpen:
+          type: boolean
+        identity:
+          type: object
+          required:
+          - userAgent
+          - locale
+          - timezone
+          properties:
+            userAgent: *id002
+            locale: *id002
+            timezone: *id002
+        egress:
+          type: object
+          required:
+          - mode
+          - dns
+          - verifiedPublicIp
+          properties:
+            mode:
+              type: string
+              enum:
+              - proxy
+              - direct-explicit
+            dns:
+              type: string
+              enum:
+              - proxy-doh-and-pinned
+              - gateway-resolved-and-pinned
+            verifiedPublicIp:
+              type:
+              - string
+              - 'null'
+    EgressVerification:
+      type: object
+      required:
+      - ip
+      - checkedAt
+      - dns
+      - proxy
+      properties:
+        ip: *id002
+        checkedAt: *id002
+        dns: *id002
+        proxy:
+          type: boolean
+    CompanionDevice:
+      type: object
+      required:
+      - id
+      - name
+      - online
+      - revoked
+      - status
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        accountId:
+          type:
+          - string
+          - 'null'
+        online:
+          type: boolean
+        revoked:
+          type: boolean
+        lastSeenAt:
+          type:
+          - string
+          - 'null'
+        status:
+          type: object
+          additionalProperties: true
+    PairingCode:
+      type: object
+      required:
+      - code
+      - expiresAt
+      properties:
+        code:
+          type: string
+        expiresAt:
+          type: string
+    DeviceCredential:
+      type: object
+      required:
+      - token
+      - expiresAt
+      properties:
+        token:
+          type: string
+        expiresAt:
+          type: string
+        device:
+          $ref: '#/components/schemas/CompanionDevice'
+    RegisterDeviceRequest:
+      type: object
+      required:
+      - code
+      - name
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+    RotateDeviceTokenRequest:
+      type: object
+    DeviceHeartbeatRequest:
+      type: object
+      required:
+      - batteryPercent
+      - charging
+      - temperatureC
+      - androidVersion
+      - model
+      - captureActive
+      - accessibilityEnabled
+      properties:
+        batteryPercent:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+          maximum: 100
+        charging:
+          type: boolean
+        temperatureC:
+          type:
+          - number
+          - 'null'
+        androidVersion:
+          type: string
+        model:
+          type: string
+        captureActive:
+          type: boolean
+        accessibilityEnabled:
+          type: boolean
+    AssignDeviceRequest:
+      type: object
+      required:
+      - accountId
+      properties:
+        accountId:
+          type:
+          - string
+          - 'null'
+          pattern: ^[a-fA-F0-9]{24}$
+      additionalProperties: false
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Opaque short-lived access token; refresh tokens rotate and are
+        revocable.
+security:
+- bearerAuth: []

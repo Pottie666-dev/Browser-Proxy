@@ -1,3 +1,4 @@
+import { authenticatedFetch, useAuth } from "../lib/auth";
 import { Feather } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
@@ -19,7 +20,9 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { BrowserProfileView, type BrowserNavigationEvent, type BrowserProfileViewRef } from "../modules/browser-profile/src";
+import type { BrowserNavigationEvent, BrowserProfileViewRef } from "../modules/browser-profile/src";
+import { RemoteBrowser, type RemoteBrowserRef, type RemoteState } from "../components/RemoteBrowser";
+import { getApiBaseUrl } from "../lib/api-url";
 
 import { useColors } from "@/hooks/useColors";
 import { buildFingerprintScript, buildFormInterceptScript, type FingerprintProfile } from "@/lib/fingerprint";
@@ -53,18 +56,6 @@ function pageTitleFromUrl(url: string): string {
   } catch {
     return url || "New Tab";
   }
-}
-
-function getApiBaseUrl(): string {
-  const rawBase =
-    process.env.EXPO_PUBLIC_API_URL?.trim() ??
-    process.env.EXPO_PUBLIC_DOMAIN?.trim();
-
-  if (!rawBase) return "http://192.168.0.8:3000";
-
-  return rawBase.startsWith("http://") || rawBase.startsWith("https://")
-    ? rawBase.replace(/\/+$/, "")
-    : `https://${rawBase.replace(/\/+$/, "")}`;
 }
 
 function buildProxyUrl(targetUrl: string, accountId: string): string {
@@ -130,9 +121,11 @@ const debugStyles = StyleSheet.create({
 });
 
 export default function BrowserScreen() {
+  const auth = useAuth();
+  const [browserAuthorized, setBrowserAuthorized] = useState(false);
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const webViewRef = useRef<BrowserProfileViewRef>(null);
+  const webViewRef = useRef<RemoteBrowserRef>(null);
 
   const params = useLocalSearchParams<{
     accountId: string;
@@ -200,6 +193,14 @@ export default function BrowserScreen() {
   const browserProfilePaths = getBrowserProfilePaths(accountId);
   const isolationCapabilities = getIsolationCapabilities();
   const nativeIsolationAvailable = isNativeIsolationAvailable();
+  useEffect(() => {
+    let cancelled = false;
+    setBrowserAuthorized(false);
+    setBrowserAuthorized(true);
+    authenticatedFetch(`/api/accounts/${encodeURIComponent(accountId)}/browser-state`).then(response => response.json()).then(state => { if (!cancelled) setBrowserState(state); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [accountId, auth.session?.accessToken]);
+
 
   const topInset = Platform.OS === "web" ? 67 : insets.top;
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
@@ -286,7 +287,7 @@ export default function BrowserScreen() {
       updatedAt: new Date().toISOString(),
     };
     setBrowserState(merged);
-    await fetch(`${apiBaseUrl}/api/accounts/${encodeURIComponent(accountId)}/browser-state`, {
+    await authenticatedFetch(`/api/accounts/${encodeURIComponent(accountId)}/browser-state`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(merged),
@@ -301,48 +302,21 @@ export default function BrowserScreen() {
   }, [saveBrowserState]);
 
   function openNewTab(url = DEFAULT_URL) {
-    const tab: BrowserTab = { id: makeLocalId("tab"), title: pageTitleFromUrl(url), url };
-    setTabs((current) => [...current, tab]);
-    setActiveTabId(tab.id);
-    navigate(url);
+    void webViewRef.current?.command({ action: "new-tab", url });
     setMenuOpen(false);
   }
 
   function closeTab(id: string) {
-    setTabs((current) => {
-      if (current.length <= 1) return current;
-      const next = current.filter((tab) => tab.id !== id);
-      if (activeTabId === id) {
-        const replacement = next[next.length - 1];
-        if (replacement) {
-          setActiveTabId(replacement.id);
-          setAddressBarText(replacement.url);
-          setCurrentProxyUrl(buildProxyUrl(replacement.url, accountId));
-        }
-      }
-      return next;
-    });
+    void webViewRef.current?.command({ action: "close-tab", tabId: id });
   }
 
   function switchTab(tab: BrowserTab) {
-    setActiveTabId(tab.id);
-    setAddressBarText(tab.url);
-    setCurrentProxyUrl(buildProxyUrl(tab.url, accountId));
+    void webViewRef.current?.command({ action: "switch-tab", tabId: tab.id });
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }
 
   function addBookmark() {
-    const url = addressBarText || DEFAULT_URL;
-    const bookmark: Bookmark = {
-      id: makeLocalId("bookmark"),
-      title: pageTitleFromUrl(url),
-      url,
-      createdAt: new Date().toISOString(),
-    };
-    setBookmarks((current) => {
-      if (current.some((item) => item.url === bookmark.url)) return current;
-      return [bookmark, ...current].slice(0, 100);
-    });
+    void webViewRef.current?.command({ action: "bookmark" });
     setMenuOpen(false);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }
@@ -359,7 +333,7 @@ export default function BrowserScreen() {
 
     Alert.alert(
       "Reset Session",
-      "Clear this account's cookies, storage and history? This does not delete the account.",
+      "Clear this account's browser profile, downloads, cookies, storage and history? This does not delete the account.",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -367,14 +341,13 @@ export default function BrowserScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              await fetch(`${apiBaseUrl}/api/accounts/${encodeURIComponent(accountId)}/browser-state`, {
+              await authenticatedFetch(`/api/accounts/${encodeURIComponent(accountId)}/browser-state`, {
                 method: "DELETE",
               });
               await webViewRef.current?.clearProfileData();
               await clearNativeBrowserProfile(accountId);
               setBrowserState(EMPTY_BROWSER_STATE);
-              webViewRef.current?.injectJavaScript(buildBrowserStateClearScript());
-              webViewRef.current?.reload();
+
               setSessionOpen(false);
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             } catch {
@@ -387,17 +360,29 @@ export default function BrowserScreen() {
   }, [accountId, apiBaseUrl]);
 
   const clearCurrentPageRuntimeState = useCallback(() => {
-    webViewRef.current?.injectJavaScript(buildBrowserStateClearScript());
+    void webViewRef.current?.command({ action: "clear-page" });
     setBrowserState(EMPTY_BROWSER_STATE);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, []);
+
+  const onRemoteState = useCallback((state: RemoteState) => {
+    setTabs(state.tabs);
+    setActiveTabId(state.activeTabId);
+    setBookmarks(state.bookmarks.map(item => ({ ...item, id: item.url, createdAt: "" })));
+    setBrowserState(current => ({ ...(current ?? EMPTY_BROWSER_STATE), history: state.history.map(item => ({ url: item.url, title: item.title, at: item.visitedAt })) }));
+    const active = state.tabs.find(tab => tab.id === state.activeTabId);
+    if (active && active.url !== "about:blank") {
+      setAddressBarText(active.url);
+      setCurrentProxyUrl(buildProxyUrl(active.url, accountId));
+    }
+  }, [accountId]);
 
   const onNavigationStateChange = useCallback(
     (navState: BrowserNavigationEvent["nativeEvent"]) => {
       setCanGoBack(navState.canGoBack);
       setCanGoForward(navState.canGoForward);
       if (navState.url && !isEditing) {
-        const target = extractTargetUrl(navState.url);
+        const target = navState.url; // Remote Chromium reports the actual URL, including its query string.
         if (target && target !== currentProxyUrl) {
           setAddressBarText(target);
           setTabs((current) =>
@@ -410,6 +395,23 @@ export default function BrowserScreen() {
     },
     [isEditing, currentProxyUrl, activeTabId]
   );
+
+
+  const onShouldStartLoadWithRequest = useCallback((request: { url: string }) => {
+    try {
+      const target = new URL(request.url);
+      const api = new URL(apiBaseUrl);
+      if (target.origin === api.origin && target.pathname === "/api/proxy") {
+        return Boolean(target.searchParams.get("url")) && target.searchParams.get("accountId") === accountId;
+      }
+      if (target.protocol === "http:" || target.protocol === "https:") {
+        setAddressBarText(request.url);
+        setTimeout(() => setCurrentProxyUrl(buildProxyUrl(request.url, accountId)), 0);
+        return false;
+      }
+      return target.protocol === "about:";
+    } catch { return false; }
+  }, [accountId, apiBaseUrl]);
 
 
 
@@ -743,15 +745,15 @@ export default function BrowserScreen() {
           </View>
 
           <Text style={[styles.sessionHelp, { color: colors.mutedForeground }]}>
-            This state is saved per account. Opening another account gets its own storage and browsing history.
+            Browser cookies (including HttpOnly), storage and service workers live in this account’s Chromium data directory. Legacy capture counts above do not enumerate that storage.
           </Text>
 
           <View style={[styles.sessionNativeBox, { backgroundColor: colors.muted, borderColor: colors.border }]}>
             <Text style={[styles.sessionNativeTitle, { color: colors.foreground }]}>
-              Native profile: {nativeCapabilities?.available ? "active" : "fallback"}
+              Browser engine: isolated Chromium
             </Text>
             <Text style={[styles.sessionNativeText, { color: colors.mutedForeground }]} numberOfLines={2}>
-              Native profile root: {nativeProfilePaths?.rootDir ?? browserProfilePaths.cookieStore}
+              Browser data is stored in this account’s dedicated environment.
             </Text>
           </View>
 
@@ -767,27 +769,12 @@ export default function BrowserScreen() {
         </View>
       </Modal>
 
-      {/* WebView or web fallback */}
-      {Platform.OS === "web" ? (
-        <View style={[styles.webFallback, { backgroundColor: colors.muted }]}>
-          <Feather name="smartphone" size={40} color={colors.mutedForeground} />
-          <Text style={[styles.webFallbackTitle, { color: colors.foreground }]}>Use on mobile</Text>
-          <Text style={[styles.webFallbackText, { color: colors.mutedForeground }]}>
-            The browser is available on iOS and Android. Scan the QR code to open in Expo Go.
-          </Text>
-          {userAgent ? (
-            <View style={[styles.debugPill, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Feather name="shield" size={12} color={colors.primary} />
-              <Text style={[styles.debugPillText, { color: colors.mutedForeground }]} numberOfLines={2}>
-                {deviceName} · {fakeIp}
-              </Text>
-            </View>
-          ) : null}
-        </View>
-      ) : (
-        <BrowserProfileView
+      {/* Account-isolated browser controller */}
+      {browserAuthorized ? <RemoteBrowser
           ref={webViewRef}
+          key={accountId}
           profileId={accountId}
+          onState={onRemoteState}
           url={currentProxyUrl}
           style={styles.webView}
           userAgent={userAgent || undefined}
@@ -805,19 +792,18 @@ export default function BrowserScreen() {
           onNavigationStateChange={({ nativeEvent }) => onNavigationStateChange(nativeEvent)}
           onDownload={({ nativeEvent }) => {
             const fileName = typeof nativeEvent.fileName === "string" ? nativeEvent.fileName : "Download";
-            Alert.alert("Download started", `${fileName} is being saved inside this account's profile.`);
+            Alert.alert("Download saved", `${fileName} is stored in this account’s profile. Open Downloads to share it.`);
           }}
           onPermissionRequest={() => {
             Alert.alert("Site permission blocked", "Camera, microphone and other sensitive WebView permissions are denied by default for this profile.");
           }}
-        />
-      )}
+        /> : <ActivityIndicator style={{ flex: 1 }} />}
 
       <View style={[styles.bottomBar, { paddingBottom: bottomInset, backgroundColor: colors.card, borderTopColor: colors.border }]}>
         <View style={[styles.deviceInfo, { backgroundColor: colors.muted }]}>
           <Feather name="wifi" size={11} color={colors.mutedForeground} />
           <Text style={[styles.deviceInfoText, { color: colors.mutedForeground }]}>
-            {fakeIp ? `${deviceName}  ·  ${fakeIp}` : "Routed via server proxy"}
+            {`${deviceName} · isolated remote Chromium · gateway egress`}
           </Text>
         </View>
       </View>

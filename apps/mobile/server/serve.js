@@ -66,16 +66,19 @@ function serveManifest(platform, res) {
 }
 
 function serveLandingPage(req, res, landingPageTemplate, appName) {
-  const forwardedProto = req.headers["x-forwarded-proto"];
-  const protocol = forwardedProto || "https";
-  const host = req.headers["x-forwarded-host"] || req.headers["host"];
+  const protocol = "https";
+  const canonical = process.env.PUBLIC_DEPLOYMENT_HOST;
+  const host = canonical || req.headers["host"];
+  if (typeof host !== "string" || !/^(?:[a-zA-Z0-9.-]+|\[[a-fA-F0-9:]+\])(?::[0-9]{1,5})?$/.test(host)) {
+    res.writeHead(400); res.end("Invalid host"); return;
+  }
   const baseUrl = `${protocol}://${host}`;
   const expsUrl = `${host}`;
 
   const html = landingPageTemplate
     .replace(/BASE_URL_PLACEHOLDER/g, baseUrl)
     .replace(/EXPS_URL_PLACEHOLDER/g, expsUrl)
-    .replace(/APP_NAME_PLACEHOLDER/g, appName);
+    .replace(/APP_NAME_PLACEHOLDER/g, appName.replace(/[&<>"\']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "\'": "&#39;" })[char]));
 
   res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
   res.end(html);
@@ -108,7 +111,10 @@ const landingPageTemplate = fs.readFileSync(TEMPLATE_PATH, "utf-8");
 const appName = getAppName();
 
 const server = http.createServer((req, res) => {
-  const url = new URL(req.url || "/", `http://${req.headers.host}`);
+  let url;
+  try { url = new URL(req.url || "/", "http://localhost"); } catch { res.writeHead(400); res.end("Invalid URL"); return; }
+  res.setHeader("x-content-type-options", "nosniff");
+  res.setHeader("referrer-policy", "no-referrer");
   let pathname = url.pathname;
 
   if (basePath && pathname.startsWith(basePath)) {
@@ -126,6 +132,10 @@ const server = http.createServer((req, res) => {
     }
   }
 
+  if (pathname === "/vendor/qr-code-styling.js") {
+    res.writeHead(200, { "content-type": "application/javascript; charset=utf-8", "cache-control": "public, max-age=86400" });
+    res.end(fs.readFileSync(path.join(__dirname, "vendor", "qr-code-styling.js"))); return;
+  }
   serveStaticFile(pathname, res);
 });
 

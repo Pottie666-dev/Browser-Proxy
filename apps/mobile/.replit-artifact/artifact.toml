@@ -2,7 +2,7 @@ kind = "mobile"
 previewPath = "/"
 title = "BrowserVault"
 version = "1.0.0"
-id = "artifacts/browser-app"
+id = "apps/mobile"
 router = "expo-domain"
 
 [[integratedSkills]]
@@ -19,7 +19,7 @@ localPort = 20112
 run = "pnpm --filter @workspace/browser-app run dev"
 
 [services.production]
-build = [ "pnpm", "--filter", "@workspace/browser-app", "run", "build" ]
+build = [ "pnpm", "--filter", "@workspace/browser-app", "run", "build:deployment" ]
 run = [ "pnpm", "--filter", "@workspace/browser-app", "run", "serve" ]
 
 [services.env]

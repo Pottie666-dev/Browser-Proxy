@@ -1,48 +1,41 @@
 # Browser-Proxy
 
-Browser-Proxy is a mobile browser identity platform. The goal is for every saved account to behave like its own separate Android phone, with its own persistent identity, browser state, storage, proxy/IP, and eventually native profile isolation.
+Browser-Proxy is an account-first browser and physical Android device management platform. Every account must support Browser Mode; assigning a physical phone adds Android Mode. Browser-only accounts do not require a phone. Changing browser attributes does not guarantee that websites identify accounts as separate physical devices.
 
-## Current status
+The primary development lineage is `restructure/monorepo`. Stage 1 recovery is preserved at `81e38a840dc29dd4de8d44222c3ea8684e74b4c6`; Stage 2 security/database development is on `development/stage-2-security`. Development branches require owner approval before merging.
 
-Completed:
+Existing account management, identity generation, tabs, bookmarks, history, browser-state persistence, standard WebView and unfinished native BrowserProfile code are preserved. Stage 2 adds authentication, ownership enforcement and encrypted database storage. Stage 3 adds a real persistent Chromium process/profile per account, proxy-routed DNS, fail-closed transport and remote controller integration. Its production namespace/sandbox boundary and device behavior require deployment validation. Historical documents describing virtualization or completed isolation are design/history, not verified product guarantees.
 
-- Phase 1: Account Vault
-- Phase 2: Identity generation
-- Phase 3: Persistent per-account browser identity
-- Phase 4A: Browser runtime isolation
-- Phase 4B: Browser state persistence
-- Phase 5: Browser UX with tabs, bookmarks and history
-- Phase 6: Device virtualization
-- Phase 7: Session isolation controls
-- Stage 8A: Native browser isolation foundation
-- Stage 8B: Native browser profile module scaffold
+## Setup and verification
 
-In progress:
-
-- Android NDK setup on Raspberry Pi
-- First custom native Android build
-- Native BrowserProfile module verification
-
-## Quick commands
+Use Node >=20.19 and PNPM 10.28.2. Configure the API using [the environment template](apps/api/.env.example); production requires MongoDB, a backed-up 32-byte encryption key, and an HTTPS API origin. Set `EXPO_PUBLIC_API_URL` to that HTTPS origin before building the controller. Localhost HTTP is permitted only in development; physical phones need HTTPS.
 
 ```bash
-pnpm run typecheck:libs
-pnpm --filter @workspace/browser-app typecheck
-pnpm --filter @workspace/api-server typecheck
-pnpm run mobile:android:native
+pnpm install --frozen-lockfile --strict-peer-dependencies
+pnpm run codegen
+pnpm run typecheck
+pnpm run build
+pnpm test
 ```
 
-## Documentation
+To include real database regressions, set `MONGO_TEST_URI` to a new **empty** database named `browser_proxy_test_…`. The test suite drops that fixture database after testing and refuses existing data. Without this setting, the real MongoDB suite is skipped; this is not full validation.
 
-See the `docs/` folder for project vision, roadmap, architecture, development setup, native Android work, fingerprint engine, proxy engine, database, API, UI/UX, release plan, ideas, dev notes, changelog, troubleshooting, security model, and project history.
-## Cloud Browser Expansion
+Read [Stage 2 results and operating requirements](docs/STAGE_2_SECURITY.md) before migrating legacy data and [Stage 3 browser support and setup](docs/STAGE_3_BROWSER_ENGINE.md) before browser deployment. No real legacy migration or production deployment has been performed.
 
-- `docs/16_CLOUD_BROWSER.md`
-- `docs/17_CLOUD_BROWSER_ARCHITECTURE.md`
-- `docs/18_CLOUD_BROWSER_API.md`
-- `docs/19_CLOUD_BROWSER_MOBILE.md`
-- `docs/20_CLOUD_BROWSER_DEPLOYMENT.md`
-- `docs/21_CLOUD_BROWSER_SECURITY.md`
-- `docs/22_CLOUD_BROWSER_TASKS.md`
-- `docs/23_CODESPACES_WORKFLOW.md`
-- `docs/24_FIRST_USABLE_RELEASE.md`
+## Roadmap
+
+1. Security and database stabilization (Stage 2).
+2. Persistent browser isolation, browser completion and verified proxy/DNS routing (Stage 3).
+3. Physical Android Companion, explicit permissions and installable APK (Stage 4).
+4. WebRTC streaming, authorized remote interaction and reconnection (Stage 5).
+5. Unified accounts, browser and Device Hub dashboard (Stage 6).
+6. Battery monitoring, supported external charging controls and fleet tests (Stage 7).
+7. Security review, device/EAS builds, deployment and recovery verification (Stage 8).
+
+Existing documentation and native browser implementation history remain in `docs/`. No hardware functionality is implied by a successful JavaScript export.
+
+## Physical Android Companion
+
+Stage 4 adds a separate Kotlin Android app (`com.browserproxy.companion`), Device Hub and secure device registration. Build, pairing steps and supported limitations: [Stage 4 Companion](docs/STAGE_4_ANDROID_COMPANION.md). Browser-only accounts continue using the isolated Stage 3 Chromium engine without device assignment.
+
+Stage 4.1 integration, builds, security backports and deployment requirements: [baseline validation](docs/STAGE_4_1_BASELINE.md).

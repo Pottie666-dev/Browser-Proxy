@@ -2,7 +2,12 @@ import { defineConfig, InputTransformerFn } from "orval";
 import path from "path";
 
 const root = path.resolve(__dirname, "..", "..");
-const apiClientReactSrc = path.resolve(root, "packages", "api-client-react", "src");
+const apiClientReactSrc = path.resolve(
+  root,
+  "packages",
+  "api-client-react",
+  "src",
+);
 const apiZodSrc = path.resolve(root, "packages", "api-zod", "src");
 
 // Our exports make assumptions about the title of the API being "Api" (i.e. generated output is `api.ts`).
@@ -30,6 +35,7 @@ export default defineConfig({
       clean: true,
       prettier: true,
       override: {
+        query: { version: 5 },
         fetch: {
           includeHttpResponseReturnType: false,
         },
@@ -57,11 +63,12 @@ export default defineConfig({
       prettier: true,
       override: {
         zod: {
+          version: 3,
           coerce: {
-            query: ['boolean', 'number', 'string'],
-            param: ['boolean', 'number', 'string'],
-            body: ['bigint', 'date'],
-            response: ['bigint', 'date'],
+            query: ["boolean", "number", "string"],
+            param: ["boolean", "number", "string"],
+            body: ["bigint", "date"],
+            response: ["bigint", "date"],
           },
         },
         useDates: true,

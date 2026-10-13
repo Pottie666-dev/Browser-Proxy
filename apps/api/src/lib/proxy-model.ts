@@ -1,7 +1,9 @@
+import { decrypt } from "./security";
 import mongoose, { Schema, type InferSchemaType } from "mongoose";
 
 const proxySchema = new Schema(
   {
+    ownerId: { type: String, required: true, index: true },
     name: { type: String, required: true, trim: true },
     type: { type: String, enum: ["http", "https", "socks5"], default: "https" },
     host: { type: String, required: true, trim: true },
@@ -25,6 +27,8 @@ const proxySchema = new Schema(
         delete ret._id;
         if (ret.password) ret.hasPassword = true;
         delete ret.password;
+        if (ret.username) ret.username = decrypt(ret.username, `proxy:${ret.ownerId}:${ret.id}:username`);
+        delete ret.ownerId;
         return ret;
       },
     },

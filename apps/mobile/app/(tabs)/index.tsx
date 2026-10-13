@@ -1,3 +1,4 @@
+import { useAuth } from "../../lib/auth";
 import { Feather } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
@@ -333,6 +334,7 @@ function AccountCard({
 }
 
 export default function AccountsScreen() {
+  const auth = useAuth();
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
@@ -405,19 +407,7 @@ export default function AccountsScreen() {
   function handleEdit(account: VaultAccount) {
     router.push({
       pathname: "/account-form",
-      params: {
-        accountId: accountId(account),
-        name: account.name ?? "",
-        surname: account.surname ?? "",
-        email: account.email ?? "",
-        password: account.password ?? "",
-        walletName: account.walletName ?? "",
-        username: account.username ?? "",
-        idNumber: account.idNumber ?? "",
-        cryptoAddress: account.cryptoAddress ?? "",
-        image1: account.image1 ?? "",
-        image2: account.image2 ?? "",
-        fingerprintTimezone: fingerprintTimezone(account),
+      params: { accountId: accountId(account)
       },
     });
   }
@@ -433,6 +423,8 @@ export default function AccountsScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}> 
       <View style={[styles.header, { paddingTop: topInset + 12 }]}> 
         <View>
+      <TouchableOpacity onPress={() => auth.signOut()} accessibilityRole="button" accessibilityLabel="Sign out" style={{ alignSelf: "flex-end", padding: 12 }}><Text style={{ color: colors.primary }}>Sign out</Text></TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push("../device-hub")}><Text style={{color: colors.primary}}>Device Hub</Text></TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.foreground }]}>Vault</Text>
           <Text style={[styles.headerSub, { color: colors.mutedForeground }]}> 
             {accounts.length} {accounts.length === 1 ? "account" : "accounts"} · {filteredAccounts.length} shown
