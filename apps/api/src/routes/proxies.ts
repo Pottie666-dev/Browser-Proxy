@@ -1,3 +1,5 @@
+import { closeAccountBrowser, beginBrowserChange } from "../browser/service";
+import { AccountModel } from "../lib/account-model";
 import { Router, type IRouter } from "express";
 import { connectMongo, hasMongoUri } from "../lib/mongo";
 import { ProxyModel } from "../lib/proxy-model";
@@ -83,8 +85,22 @@ router.post("/", async (req, res, next) => {
 });
 
 router.patch("/:id", async (req, res, next) => {
+  const releases: (() => void)[] = [];
   try {
     await ready();
+    if (
+      await ProxyModel.exists(ownerFilter(req.params.id, res.locals.userId))
+    ) {
+      for (const account of await AccountModel.find({
+        ownerId: res.locals.userId,
+        proxyId: req.params.id,
+      }).select("_id")) {
+        releases.push(
+          beginBrowserChange(res.locals.userId, String(account._id)),
+        );
+        await closeAccountBrowser(res.locals.userId, String(account._id));
+      }
+    }
     const proxy = await ProxyModel.findOneAndUpdate(
       ownerFilter(req.params.id, res.locals.userId),
       {
@@ -108,27 +124,40 @@ router.patch("/:id", async (req, res, next) => {
     res.json(proxy.toJSON());
   } catch (error) {
     next(error);
+  } finally {
+    for (const release of releases) release();
   }
 });
 
 router.delete("/:id", async (req, res, next) => {
+  const releases: (() => void)[] = [];
   try {
     await ready();
+    if (
+      await ProxyModel.exists(ownerFilter(req.params.id, res.locals.userId))
+    ) {
+      for (const account of await AccountModel.find({
+        ownerId: res.locals.userId,
+        proxyId: req.params.id,
+      }).select("_id")) {
+        releases.push(
+          beginBrowserChange(res.locals.userId, String(account._id)),
+        );
+        await closeAccountBrowser(res.locals.userId, String(account._id));
+      }
+    }
     const proxy = await ProxyModel.findOneAndDelete(
       ownerFilter(req.params.id, res.locals.userId),
     );
     if (!proxy)
       return void res.status(404).json({ message: "Proxy not found" });
-    await (
-      await import("../lib/account-model")
-    ).AccountModel.updateMany(
-      { proxyId: req.params.id, ownerId: res.locals.userId },
-      { $unset: { proxyId: 1 } },
-    );
+    // Retain required proxy references: removal must not silently switch account egress.
     await audit(res.locals.userId, "proxy.delete", req.params.id);
     res.status(204).send();
   } catch (error) {
     next(error);
+  } finally {
+    for (const release of releases) release();
   }
 });
 

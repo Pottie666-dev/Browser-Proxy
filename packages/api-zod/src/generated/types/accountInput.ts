@@ -5,7 +5,7 @@
  * BrowserVault API - account management and proxy browsing
  * OpenAPI spec version: 0.1.0
  */
-import type { AccountInputFingerprint } from './accountInputFingerprint';
+import type { AccountInputFingerprint } from "./accountInputFingerprint";
 
 export interface AccountInput {
   /** @minLength 1 */
@@ -13,9 +13,9 @@ export interface AccountInput {
   /** @minLength 1 */
   surname?: string;
   /**
-     * If omitted, a random email is generated from name and surname
-     * @nullable
-     */
+   * If omitted, a random email is generated from name and surname
+   * @nullable
+   */
   email?: string | null;
   /** @minLength 1 */
   password?: string;
@@ -40,4 +40,9 @@ export interface AccountInput {
   /** @nullable */
   proxyId?: string | null;
   fingerprint?: AccountInputFingerprint;
+  /**
+   * Owner-visible encrypted-at-rest HTTP/HTTPS proxy URL; proxyId takes precedence
+   * @nullable
+   */
+  proxyUrl?: string | null;
 }

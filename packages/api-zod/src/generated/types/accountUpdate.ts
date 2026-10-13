@@ -5,7 +5,7 @@
  * BrowserVault API - account management and proxy browsing
  * OpenAPI spec version: 0.1.0
  */
-import type { AccountUpdateFingerprint } from './accountUpdateFingerprint';
+import type { AccountUpdateFingerprint } from "./accountUpdateFingerprint";
 
 export interface AccountUpdate {
   /** @minLength 1 */
@@ -37,4 +37,9 @@ export interface AccountUpdate {
   /** @nullable */
   proxyId?: string | null;
   fingerprint?: AccountUpdateFingerprint;
+  /**
+   * Owner-visible encrypted-at-rest HTTP/HTTPS proxy URL; proxyId takes precedence
+   * @nullable
+   */
+  proxyUrl?: string | null;
 }

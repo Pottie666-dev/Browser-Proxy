@@ -54,3 +54,7 @@ Thumbs.db
 !.env.example
 *.key
 *.pem
+
+# Never commit browser cookies, databases, screenshots or downloaded account data.
+.browser-proxy-profiles/
+*.apk

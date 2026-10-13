@@ -15,7 +15,8 @@
     "doctor:browser-proxy": "node scripts/browser-proxy-doctor.mjs",
     "codegen": "pnpm --filter @workspace/api-spec run codegen",
     "test": "pnpm --filter @workspace/api-server run test && node --test scripts/test/*.test.mjs",
-    "db:migrate": "pnpm --filter @workspace/api-server run db:migrate"
+    "db:migrate": "pnpm --filter @workspace/api-server run db:migrate",
+    "test:browser:confined": "pnpm --filter @workspace/api-server run test:browser:confined"
   },
   "private": true,
   "devDependencies": {

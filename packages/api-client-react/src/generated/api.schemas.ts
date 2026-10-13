@@ -28,14 +28,14 @@ export interface Account {
   /** @nullable */
   cryptoAddress?: string | null;
   /**
-     * Base64 data URI of first stored image
-     * @nullable
-     */
+   * Base64 data URI of first stored image
+   * @nullable
+   */
   image1?: string | null;
   /**
-     * Base64 data URI of second stored image
-     * @nullable
-     */
+   * Base64 data URI of second stored image
+   * @nullable
+   */
   image2?: string | null;
   createdAt: string;
   favorite?: boolean;
@@ -47,6 +47,11 @@ export interface Account {
   /** @nullable */
   proxyId?: string | null;
   fingerprint?: AccountFingerprint;
+  /**
+   * Owner-visible encrypted-at-rest HTTP/HTTPS proxy URL; proxyId takes precedence
+   * @nullable
+   */
+  proxyUrl?: string | null;
 }
 
 export type AccountInputFingerprint = { [key: string]: unknown };
@@ -57,9 +62,9 @@ export interface AccountInput {
   /** @minLength 1 */
   surname?: string;
   /**
-     * If omitted, a random email is generated from name and surname
-     * @nullable
-     */
+   * If omitted, a random email is generated from name and surname
+   * @nullable
+   */
   email?: string | null;
   /** @minLength 1 */
   password?: string;
@@ -84,6 +89,11 @@ export interface AccountInput {
   /** @nullable */
   proxyId?: string | null;
   fingerprint?: AccountInputFingerprint;
+  /**
+   * Owner-visible encrypted-at-rest HTTP/HTTPS proxy URL; proxyId takes precedence
+   * @nullable
+   */
+  proxyUrl?: string | null;
 }
 
 export type AccountUpdateFingerprint = { [key: string]: unknown };
@@ -118,6 +128,11 @@ export interface AccountUpdate {
   /** @nullable */
   proxyId?: string | null;
   fingerprint?: AccountUpdateFingerprint;
+  /**
+   * Owner-visible encrypted-at-rest HTTP/HTTPS proxy URL; proxyId takes precedence
+   * @nullable
+   */
+  proxyUrl?: string | null;
 }
 
 export interface ErrorResponse {
@@ -127,9 +142,9 @@ export interface ErrorResponse {
 export interface LoginInput {
   email: string;
   /**
-     * @minLength 12
-     * @maxLength 128
-     */
+   * @minLength 12
+   * @maxLength 128
+   */
   password: string;
 }
 
@@ -149,3 +164,135 @@ export interface AuthUser {
   id: string;
 }
 
+export type BrowserCommandAction =
+  (typeof BrowserCommandAction)[keyof typeof BrowserCommandAction];
+
+export const BrowserCommandAction = {
+  navigate: "navigate",
+  "new-tab": "new-tab",
+  "switch-tab": "switch-tab",
+  "close-tab": "close-tab",
+  back: "back",
+  forward: "forward",
+  reload: "reload",
+  stop: "stop",
+  tap: "tap",
+  scroll: "scroll",
+  type: "type",
+  key: "key",
+  bookmark: "bookmark",
+  "remove-bookmark": "remove-bookmark",
+  "clear-page": "clear-page",
+  upload: "upload",
+} as const;
+
+export interface BrowserCommand {
+  action: BrowserCommandAction;
+  tabId?: string;
+  /** @maxLength 8192 */
+  url?: string;
+  /** @maxLength 50000 */
+  text?: string;
+  /**
+   * @minimum 0
+   * @maximum 390
+   */
+  x?: number;
+  /**
+   * @minimum 0
+   * @maximum 740
+   */
+  y?: number;
+  /**
+   * @minimum -10000
+   * @maximum 10000
+   */
+  deltaY?: number;
+  /** @maxLength 150 */
+  name?: string;
+  mimeType?: string;
+  /** Upload data; controller limit 3 MB */
+  base64?: string;
+}
+
+export type BrowserStatusEngine =
+  (typeof BrowserStatusEngine)[keyof typeof BrowserStatusEngine];
+
+export const BrowserStatusEngine = {
+  "chromium-process": "chromium-process",
+} as const;
+
+export type BrowserStatusTabsItem = {
+  id: string;
+  url: string;
+  title: string;
+  canGoBack: boolean;
+  canGoForward: boolean;
+};
+
+export type BrowserStatusBookmarksItem = {
+  url: string;
+  title: string;
+};
+
+export type BrowserStatusHistoryItem = {
+  url: string;
+  title: string;
+  visitedAt: string;
+};
+
+export type BrowserStatusDownloadsItem = {
+  id: string;
+  name: string;
+  size: number;
+  createdAt: string;
+};
+
+export type BrowserStatusIdentity = {
+  userAgent: string;
+  locale: string;
+  timezone: string;
+};
+
+export type BrowserStatusEgressMode =
+  (typeof BrowserStatusEgressMode)[keyof typeof BrowserStatusEgressMode];
+
+export const BrowserStatusEgressMode = {
+  proxy: "proxy",
+  "direct-explicit": "direct-explicit",
+} as const;
+
+export type BrowserStatusEgressDns =
+  (typeof BrowserStatusEgressDns)[keyof typeof BrowserStatusEgressDns];
+
+export const BrowserStatusEgressDns = {
+  "proxy-doh-and-pinned": "proxy-doh-and-pinned",
+  "gateway-resolved-and-pinned": "gateway-resolved-and-pinned",
+} as const;
+
+export type BrowserStatusEgress = {
+  mode: BrowserStatusEgressMode;
+  dns: BrowserStatusEgressDns;
+  /** @nullable */
+  verifiedPublicIp: string | null;
+};
+
+export interface BrowserStatus {
+  engine: BrowserStatusEngine;
+  accountId: string;
+  activeTabId: string;
+  tabs: BrowserStatusTabsItem[];
+  bookmarks: BrowserStatusBookmarksItem[];
+  history: BrowserStatusHistoryItem[];
+  downloads: BrowserStatusDownloadsItem[];
+  filePickerOpen: boolean;
+  identity: BrowserStatusIdentity;
+  egress: BrowserStatusEgress;
+}
+
+export interface EgressVerification {
+  ip: string;
+  checkedAt: string;
+  dns: string;
+  proxy: boolean;
+}

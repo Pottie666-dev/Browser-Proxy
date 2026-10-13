@@ -1,4 +1,9 @@
 import {
+  closeAccountBrowser,
+  resetAccountBrowser,
+  beginBrowserChange,
+} from "../browser/service";
+import {
   Router,
   type Request,
   type Response,
@@ -473,6 +478,7 @@ async function updateAccount(
   res: Response,
   next: NextFunction,
 ) {
+  let release: (() => void) | undefined;
   try {
     const body = cleanBody(req.body);
     const fpPatch = bodyFingerprint(body);
@@ -497,6 +503,8 @@ async function updateAccount(
         return;
       }
 
+      release = beginBrowserChange(res.locals.userId, req.params.id);
+      await closeAccountBrowser(res.locals.userId, req.params.id);
       const existingObject = existing.toObject() as Record<string, unknown>;
       const mergedFingerprint = mergeFingerprint(
         existingObject.fingerprint,
@@ -538,6 +546,8 @@ async function updateAccount(
       return;
     }
 
+    release = beginBrowserChange(res.locals.userId, req.params.id);
+    await closeAccountBrowser(res.locals.userId, req.params.id);
     const mergedFingerprint = mergeFingerprint(existing.fingerprint, fpPatch);
     if (requestedTimezone(body)) {
       mergedFingerprint.timezone = requestedTimezone(body);
@@ -562,12 +572,23 @@ async function updateAccount(
     res.json(revealAccount(updated));
   } catch (error) {
     next(error);
+  } finally {
+    release?.();
   }
 }
 
 router.delete("/:id", async (req, res, next) => {
+  let release: (() => void) | undefined;
   try {
     if (await useMongo()) {
+      if (
+        !(await AccountModel.exists(
+          ownerFilter(req.params.id, res.locals.userId),
+        ))
+      )
+        throw new HttpError(404, "Not found");
+      release = beginBrowserChange(res.locals.userId, req.params.id);
+      await resetAccountBrowser(res.locals.userId, req.params.id);
       if (
         !(await AccountModel.findOneAndDelete(
           ownerFilter(req.params.id, res.locals.userId),
@@ -581,10 +602,14 @@ router.delete("/:id", async (req, res, next) => {
 
     if (memoryAccounts.get(req.params.id)?.ownerId !== res.locals.userId)
       throw new HttpError(404, "Not found");
+    release = beginBrowserChange(res.locals.userId, req.params.id);
+    await resetAccountBrowser(res.locals.userId, req.params.id);
     memoryAccounts.delete(req.params.id);
     res.status(204).send();
   } catch (error) {
     next(error);
+  } finally {
+    release?.();
   }
 });
 

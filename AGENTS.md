@@ -1,6 +1,7 @@
 # Browser-Proxy development rules
 
 - Repository: Pottie666-dev/Browser-Proxy. Primary lineage: restructure/monorepo.
+- Stage 2 foundation: 46a477e0ef4525a43e703c35f816466955562015. Stage 3 branch: development/stage-3-browser-isolation.
 - Stage 1 foundation: 81e38a840dc29dd4de8d44222c3ea8684e74b4c6.
 - Preserve existing work. Do not reset, overwrite, delete native browser code, or merge branches without owner approval.
 - Implement and commit small, verified stages. Inspect the current branch and working tree first.
@@ -11,3 +12,6 @@
 - Run frozen installation, code generation, workspace typechecks, relevant regression tests and builds. MongoDB tests require a new empty browser_proxy_test_ database.
 - Report unverified native/device behavior accurately; compilation is not hardware validation or an isolation test.
 - Development roadmap: Stage 2 security/database; Stage 3 browser isolation/egress; Stage 4 companion; Stage 5 streaming/control; Stage 6 dashboard; Stage 7 charging/fleet; Stage 8 production readiness.
+
+- Browser Mode uses per-account remote Chromium processes/directories and mandatory production network namespaces/sandbox. Do not re-enable a shared WebView or direct/proxy/DNS fallback to bypass host limitations.
+- Chromium native session recovery must omit Playwright’s startup blank page and avoid recreating the first restored tab; keep the multi-origin sessionStorage/back-history regressions.

@@ -9,7 +9,8 @@
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.tools.json --noEmit",
     "test": "pnpm run build && tsx --test test/*.test.mjs",
-    "db:migrate": "tsx tools/migrate-owned-accounts.ts"
+    "db:migrate": "tsx tools/migrate-owned-accounts.ts",
+    "test:browser:confined": "BROWSER_TEST_CONFINED=true tsx --test test/browser-isolation.test.mjs test/browser-network-boundary.check.mjs"
   },
   "dependencies": {
     "@workspace/api-zod": "workspace:*",
@@ -18,12 +19,13 @@
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.7.1",
+    "helmet": "^8.3.0",
+    "ipaddr.js": "^2.3.0",
     "mongoose": "^8.15.0",
     "pino": "^9.14.0",
     "pino-http": "^10.5.0",
-    "helmet": "^8.3.0",
-    "express-rate-limit": "^8.7.1",
-    "ipaddr.js": "^2.3.0",
+    "playwright-core": "1.58.2",
     "zod": "catalog:"
   },
   "devDependencies": {

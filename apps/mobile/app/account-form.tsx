@@ -243,6 +243,7 @@ export default function AccountFormScreen() {
   const [walletName, setWalletName] = useState(params.walletName ?? "");
   const [image1, setImage1] = useState<string | null>(params.image1 || null);
   const [image2, setImage2] = useState<string | null>(params.image2 || null);
+  const [proxyUrl, setProxyUrl] = useState("");
   const [timezone, setTimezone] = useState(params.fingerprintTimezone || "Africa/Johannesburg");
 
   const [usernameManual, setUsernameManual] = useState(isEdit);
@@ -264,6 +265,7 @@ export default function AccountFormScreen() {
         setIdNumber(account.idNumber ?? ""); setCryptoAddress(account.cryptoAddress ?? "");
         setImage1(account.image1 ?? null); setImage2(account.image2 ?? null);
         const rich = account as typeof account & { fingerprint?: { timezone?: string } };
+        setProxyUrl(account.proxyUrl ?? "");
         setTimezone(rich.fingerprint?.timezone ?? "Africa/Johannesburg"); setCredentialsLoaded(true);
       }
     }).catch(() => { if (!cancelled) setErrors({ password: "Unable to load account credentials" }); });
@@ -313,6 +315,7 @@ export default function AccountFormScreen() {
       image2: image2 ?? null,
       fingerprint: {
         timezone,
+        proxyUrl,
       },
     };
 
@@ -416,8 +419,11 @@ export default function AccountFormScreen() {
         {/* LOCATION */}
         <Section label="LOCATION / TIMEZONE">
           <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground, lineHeight: 17, marginBottom: 10 }}>
-            Choose the timezone this account should consistently appear from. Use South Africa when all accounts must look local.
+            Choose the timezone for this browser profile. Network location follows the configured egress.
           </Text>
+          <Text style={{ color: colors.foreground }}>Account proxy URL (HTTP/HTTPS)</Text>
+          <TextInput value={proxyUrl} onChangeText={setProxyUrl} autoCapitalize="none" autoCorrect={false} secureTextEntry placeholder="https://user:password@proxy:443" style={{ color: colors.foreground, borderColor: colors.border, borderWidth: 1, borderRadius: 8, padding: 12, marginVertical: 10 }} />
+          <Text style={{ color: colors.mutedForeground }}>Stored encrypted. A required proxy failure blocks browsing. Assigned proxy records take precedence. Leave blank to use the operator-configured egress.</Text>
           <View style={styles.timezoneGrid}>
             {TIMEZONES.map((tz) => {
               const active = timezone === tz.value;

@@ -5,7 +5,7 @@
  * BrowserVault API - account management and proxy browsing
  * OpenAPI spec version: 0.1.0
  */
-import type { AccountFingerprint } from './accountFingerprint';
+import type { AccountFingerprint } from "./accountFingerprint";
 
 export interface Account {
   id: string;
@@ -24,14 +24,14 @@ export interface Account {
   /** @nullable */
   cryptoAddress?: string | null;
   /**
-     * Base64 data URI of first stored image
-     * @nullable
-     */
+   * Base64 data URI of first stored image
+   * @nullable
+   */
   image1?: string | null;
   /**
-     * Base64 data URI of second stored image
-     * @nullable
-     */
+   * Base64 data URI of second stored image
+   * @nullable
+   */
   image2?: string | null;
   createdAt: string;
   favorite?: boolean;
@@ -43,4 +43,9 @@ export interface Account {
   /** @nullable */
   proxyId?: string | null;
   fingerprint?: AccountFingerprint;
+  /**
+   * Owner-visible encrypted-at-rest HTTP/HTTPS proxy URL; proxyId takes precedence
+   * @nullable
+   */
+  proxyUrl?: string | null;
 }

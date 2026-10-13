@@ -4,7 +4,7 @@ Browser-Proxy is an account-first browser and physical Android device management
 
 The primary development lineage is `restructure/monorepo`. Stage 1 recovery is preserved at `81e38a840dc29dd4de8d44222c3ea8684e74b4c6`; Stage 2 security/database development is on `development/stage-2-security`. Development branches require owner approval before merging.
 
-Existing account management, identity generation, tabs, bookmarks, history, browser-state persistence, standard WebView and unfinished native BrowserProfile code are preserved. Stage 2 adds authentication, ownership enforcement and encrypted database storage. Full persistent browser-engine isolation and verified per-account proxy transport remain Stage 3 work. Historical documents describing virtualization or completed isolation are design/history, not verified product guarantees.
+Existing account management, identity generation, tabs, bookmarks, history, browser-state persistence, standard WebView and unfinished native BrowserProfile code are preserved. Stage 2 adds authentication, ownership enforcement and encrypted database storage. Stage 3 adds a real persistent Chromium process/profile per account, proxy-routed DNS, fail-closed transport and remote controller integration. Its production namespace/sandbox boundary and device behavior require deployment validation. Historical documents describing virtualization or completed isolation are design/history, not verified product guarantees.
 
 ## Setup and verification
 
@@ -20,7 +20,7 @@ pnpm test
 
 To include real database regressions, set `MONGO_TEST_URI` to a new **empty** database named `browser_proxy_test_…`. The test suite drops that fixture database after testing and refuses existing data. Without this setting, the real MongoDB suite is skipped; this is not full validation.
 
-Read [Stage 2 results and operating requirements](docs/STAGE_2_SECURITY.md) before deployment or migrating legacy data. No real legacy migration or production deployment has been performed.
+Read [Stage 2 results and operating requirements](docs/STAGE_2_SECURITY.md) before migrating legacy data and [Stage 3 browser support and setup](docs/STAGE_3_BROWSER_ENGINE.md) before browser deployment. No real legacy migration or production deployment has been performed.
 
 ## Roadmap
 

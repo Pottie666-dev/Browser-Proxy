@@ -1,3 +1,4 @@
+import { shutdownBrowsers } from "./browser/service";
 import app from "./app";
 import { logger } from "./lib/logger";
 import { validateSecurityConfig, memoryMode } from "./lib/security";
@@ -35,6 +36,7 @@ async function start() {
       stopping = true;
       server.close(async () => {
         const mongoose = await import("mongoose");
+        await shutdownBrowsers();
         await mongoose.default.disconnect();
         process.exit(0);
       });

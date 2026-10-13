@@ -241,6 +241,46 @@ test(
       );
       let proxy;
       await t.test(
+        "browser engine commands, frames and downloads enforce owner authorization before worker access",
+        async () => {
+          const prefix = `/api/accounts/${account.id}/browser`;
+          for (const endpoint of [
+            prefix,
+            `${prefix}/frame`,
+            `${prefix}/downloads/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa`,
+          ]) {
+            assert.equal(
+              (await request(endpoint, "GET", undefined, bob)).status,
+              404,
+            );
+            assert.equal(
+              (await request(endpoint, "GET", undefined, null)).status,
+              401,
+            );
+          }
+          assert.equal((await request(prefix)).status, 503);
+          assert.equal(
+            (
+              await request(`${prefix}/commands`, "POST", {
+                action: "evaluate",
+                text: "steal()",
+              })
+            ).status,
+            400,
+          );
+          assert.equal(
+            (await request(`${prefix}/commands`, "POST", { action: "tap" }))
+              .status,
+            400,
+          );
+          assert.equal(
+            (await request(`${prefix}/profile`, "DELETE", undefined, bob))
+              .status,
+            404,
+          );
+        },
+      );
+      await t.test(
         "proxy credentials are encrypted and proxy ownership is enforced",
         async () => {
           const created = await request("/api/proxies", "POST", {

@@ -1,3 +1,4 @@
+import { closeOwnerBrowsers } from "../browser/service";
 import { Router } from "express";
 import mongoose from "mongoose";
 import { z } from "zod";
@@ -104,6 +105,7 @@ router.post("/refresh", async (req, res, next) => {
 router.post("/logout", requireAuth, async (_req, res, next) => {
   try {
     await revokeSession(res.locals.session.accessHash);
+    await closeOwnerBrowsers(res.locals.userId);
     await audit(res.locals.userId, "session.logout");
     res.status(204).end();
   } catch (error) {

@@ -13,6 +13,8 @@ tags:
   description: Account management
 - name: proxy
   description: Web proxy
+- name: browser
+  description: Owned persistent Chromium profiles; no physical Android device required
 paths:
   /healthz:
     get:
@@ -210,6 +212,193 @@ paths:
       responses:
         '204':
           description: Session revoked
+  /accounts/{id}/browser:
+    get:
+      operationId: getBrowserStatus
+      tags:
+      - browser
+      summary: Start or restore this owned isolated browser profile
+      parameters:
+      - &id001
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrowserStatus'
+        '400':
+          description: Invalid command or destination
+        '401':
+          description: Authentication required
+        '404':
+          description: Owned account, tab or download not found
+        '429':
+          description: Rate limited
+        '503':
+          description: Worker, required proxy or proxy-routed DNS unavailable
+  /accounts/{id}/browser/commands:
+    post:
+      operationId: browserCommand
+      tags:
+      - browser
+      summary: Perform a bounded browser action; arbitrary JavaScript is not accepted
+      parameters:
+      - *id001
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrowserStatus'
+        '400':
+          description: Invalid command or destination
+        '401':
+          description: Authentication required
+        '404':
+          description: Owned account, tab or download not found
+        '429':
+          description: Rate limited
+        '503':
+          description: Worker, required proxy or proxy-routed DNS unavailable
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BrowserCommand'
+  /accounts/{id}/browser/frame:
+    get:
+      operationId: getBrowserFrame
+      tags:
+      - browser
+      summary: Authenticated current browser screenshot
+      parameters:
+      - *id001
+      responses:
+        '200':
+          description: Success
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Invalid command or destination
+        '401':
+          description: Authentication required
+        '404':
+          description: Owned account, tab or download not found
+        '429':
+          description: Rate limited
+        '503':
+          description: Worker, required proxy or proxy-routed DNS unavailable
+  /accounts/{id}/browser/verify-egress:
+    post:
+      operationId: verifyBrowserEgress
+      tags:
+      - browser
+      summary: Observe public IP through the account route and operator-configured
+        verifier
+      parameters:
+      - *id001
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EgressVerification'
+        '400':
+          description: Invalid command or destination
+        '401':
+          description: Authentication required
+        '404':
+          description: Owned account, tab or download not found
+        '429':
+          description: Rate limited
+        '503':
+          description: Worker, required proxy or proxy-routed DNS unavailable
+  /accounts/{id}/browser/session:
+    delete:
+      operationId: closeBrowserSession
+      tags:
+      - browser
+      summary: Close Chromium and flush persistent profile state
+      parameters:
+      - *id001
+      responses:
+        '204':
+          description: Success
+        '400':
+          description: Invalid command or destination
+        '401':
+          description: Authentication required
+        '404':
+          description: Owned account, tab or download not found
+        '429':
+          description: Rate limited
+        '503':
+          description: Worker, required proxy or proxy-routed DNS unavailable
+  /accounts/{id}/browser/profile:
+    delete:
+      operationId: resetBrowserProfile
+      tags:
+      - browser
+      summary: Explicitly clear only this account’s browser data and downloads
+      parameters:
+      - *id001
+      responses:
+        '204':
+          description: Success
+        '400':
+          description: Invalid command or destination
+        '401':
+          description: Authentication required
+        '404':
+          description: Owned account, tab or download not found
+        '429':
+          description: Rate limited
+        '503':
+          description: Worker, required proxy or proxy-routed DNS unavailable
+  /accounts/{id}/browser/downloads/{downloadId}:
+    get:
+      operationId: downloadBrowserFile
+      tags:
+      - browser
+      summary: downloadBrowserFile
+      parameters:
+      - *id001
+      - name: downloadId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Success
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Invalid command or destination
+        '401':
+          description: Authentication required
+        '404':
+          description: Owned account, tab or download not found
+        '429':
+          description: Rate limited
+        '503':
+          description: Worker, required proxy or proxy-routed DNS unavailable
 components:
   schemas:
     HealthStatus:
@@ -292,6 +481,12 @@ components:
         fingerprint:
           type: object
           additionalProperties: true
+        proxyUrl:
+          type:
+          - string
+          - 'null'
+          description: Owner-visible encrypted-at-rest HTTP/HTTPS proxy URL; proxyId
+            takes precedence
     AccountInput:
       type: object
       required:
@@ -355,6 +550,12 @@ components:
         fingerprint:
           type: object
           additionalProperties: true
+        proxyUrl:
+          type:
+          - string
+          - 'null'
+          description: Owner-visible encrypted-at-rest HTTP/HTTPS proxy URL; proxyId
+            takes precedence
     AccountUpdate:
       type: object
       properties:
@@ -414,6 +615,12 @@ components:
         fingerprint:
           type: object
           additionalProperties: true
+        proxyUrl:
+          type:
+          - string
+          - 'null'
+          description: Owner-visible encrypted-at-rest HTTP/HTTPS proxy URL; proxyId
+            takes precedence
     ErrorResponse:
       type: object
       required:
@@ -467,6 +674,186 @@ components:
       properties:
         id:
           type: string
+    BrowserCommand:
+      type: object
+      additionalProperties: false
+      required:
+      - action
+      properties:
+        action:
+          type: string
+          enum:
+          - navigate
+          - new-tab
+          - switch-tab
+          - close-tab
+          - back
+          - forward
+          - reload
+          - stop
+          - tap
+          - scroll
+          - type
+          - key
+          - bookmark
+          - remove-bookmark
+          - clear-page
+          - upload
+        tabId:
+          type: string
+          format: uuid
+        url:
+          type: string
+          maxLength: 8192
+        text:
+          type: string
+          maxLength: 50000
+        x:
+          type: number
+          minimum: 0
+          maximum: 390
+        y:
+          type: number
+          minimum: 0
+          maximum: 740
+        deltaY:
+          type: number
+          minimum: -10000
+          maximum: 10000
+        name:
+          type: string
+          maxLength: 150
+        mimeType:
+          type: string
+        base64:
+          type: string
+          description: Upload data; controller limit 3 MB
+    BrowserStatus:
+      type: object
+      required:
+      - engine
+      - accountId
+      - activeTabId
+      - tabs
+      - bookmarks
+      - history
+      - downloads
+      - filePickerOpen
+      - identity
+      - egress
+      properties:
+        engine:
+          type: string
+          enum:
+          - chromium-process
+        accountId: &id002
+          type: string
+        activeTabId: *id002
+        tabs:
+          type: array
+          items:
+            type: object
+            required:
+            - id
+            - url
+            - title
+            - canGoBack
+            - canGoForward
+            properties:
+              id:
+                type: string
+                format: uuid
+              url: *id002
+              title: *id002
+              canGoBack:
+                type: boolean
+              canGoForward:
+                type: boolean
+        bookmarks:
+          type: array
+          items:
+            type: object
+            required:
+            - url
+            - title
+            properties:
+              url: *id002
+              title: *id002
+        history:
+          type: array
+          items:
+            type: object
+            required:
+            - url
+            - title
+            - visitedAt
+            properties:
+              url: *id002
+              title: *id002
+              visitedAt: *id002
+        downloads:
+          type: array
+          items:
+            type: object
+            required:
+            - id
+            - name
+            - size
+            - createdAt
+            properties:
+              id:
+                type: string
+                format: uuid
+              name: *id002
+              size:
+                type: integer
+              createdAt: *id002
+        filePickerOpen:
+          type: boolean
+        identity:
+          type: object
+          required:
+          - userAgent
+          - locale
+          - timezone
+          properties:
+            userAgent: *id002
+            locale: *id002
+            timezone: *id002
+        egress:
+          type: object
+          required:
+          - mode
+          - dns
+          - verifiedPublicIp
+          properties:
+            mode:
+              type: string
+              enum:
+              - proxy
+              - direct-explicit
+            dns:
+              type: string
+              enum:
+              - proxy-doh-and-pinned
+              - gateway-resolved-and-pinned
+            verifiedPublicIp:
+              type:
+              - string
+              - 'null'
+    EgressVerification:
+      type: object
+      required:
+      - ip
+      - checkedAt
+      - dns
+      - proxy
+      properties:
+        ip: *id002
+        checkedAt: *id002
+        dns: *id002
+        proxy:
+          type: boolean
   securitySchemes:
     bearerAuth:
       type: http
