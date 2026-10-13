@@ -1,0 +1,3 @@
+eightbitlab.com.blurview
+attr blurOverlayColor
+styleable BlurView blurOverlayColor

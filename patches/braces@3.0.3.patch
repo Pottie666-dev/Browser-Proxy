@@ -1,0 +1,68 @@
+diff --git a/lib/compile.js b/lib/compile.js
+index dce69beb90ece5c3b0ca234a949418f9f34eedbc..1dd9731b8d59d5cafdb35bdea9d77f9810920923 100644
+--- a/lib/compile.js
++++ b/lib/compile.js
+@@ -4,6 +4,7 @@ const fill = require('fill-range');
+ const utils = require('./utils');
+ 
+ const compile = (ast, options = {}) => {
++  require('./depth')(ast);
+   const walk = (node, parent = {}) => {
+     const invalidBlock = utils.isInvalidBrace(parent);
+     const invalidNode = node.invalid === true && options.escapeInvalid === true;
+diff --git a/lib/depth.js b/lib/depth.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..b9616995372236eee6bc5ad26164ff5bbd8b02e7
+--- /dev/null
++++ b/lib/depth.js
+@@ -0,0 +1,14 @@
++'use strict';
++// Bound all public AST walkers, including caller-supplied/cyclic ASTs.
++module.exports = ast => {
++  const pending = [[ast, 0]];
++  const seen = new WeakSet();
++  let count = 0;
++  while (pending.length) {
++    const [node, depth] = pending.pop();
++    if (!node || typeof node !== 'object') continue;
++    if (depth > 100 || ++count > 100000 || seen.has(node)) throw new SyntaxError('Brace AST exceeds safe depth/size or contains a cycle');
++    seen.add(node);
++    if (Array.isArray(node.nodes)) for (const child of node.nodes) pending.push([child, depth + 1]);
++  }
++};
+diff --git a/lib/expand.js b/lib/expand.js
+index 35b2c41d6afdb8f0197959e26079f266e48370d3..b0da65b3adf33dacfc86f2c0a681b77bfe582e0c 100644
+--- a/lib/expand.js
++++ b/lib/expand.js
+@@ -31,6 +31,7 @@ const append = (queue = '', stash = '', enclose = false) => {
+ };
+ 
+ const expand = (ast, options = {}) => {
++  require('./depth')(ast);
+   const rangeLimit = options.rangeLimit === undefined ? 1000 : options.rangeLimit;
+ 
+   const walk = (node, parent = {}) => {
+diff --git a/lib/parse.js b/lib/parse.js
+index 3a6988e629f52aee6609dc5ec290a5e9ff47cecb..ec3825154f019a50fb7201c9f6e9f3579aaa0eb0 100644
+--- a/lib/parse.js
++++ b/lib/parse.js
+@@ -74,6 +74,7 @@ const parse = (input, options = {}) => {
+   push({ type: 'bos' });
+ 
+   while (index < length) {
++    if (stack.length > 100) throw new SyntaxError('Brace pattern exceeds safe depth');
+     block = stack[stack.length - 1];
+     value = advance();
+ 
+diff --git a/lib/stringify.js b/lib/stringify.js
+index 8bcf872c31894f81a8c64d9202fd607e4fd7ea2b..f03a97f5d70da0a8ff69e76b75cad50dae7791a6 100644
+--- a/lib/stringify.js
++++ b/lib/stringify.js
+@@ -3,6 +3,7 @@
+ const utils = require('./utils');
+ 
+ module.exports = (ast, options = {}) => {
++  require('./depth')(ast);
+   const stringify = (node, parent = {}) => {
+     const invalidBlock = options.escapeInvalid && utils.isInvalidBrace(parent);
+     const invalidNode = node.invalid === true && options.escapeInvalid === true;

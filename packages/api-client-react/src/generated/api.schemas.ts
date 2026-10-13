@@ -348,6 +348,9 @@ export interface DeviceHeartbeatRequest {
 }
 
 export interface AssignDeviceRequest {
-  /** @nullable */
+  /**
+   * @nullable
+   * @pattern ^[a-fA-F0-9]{24}$
+   */
   accountId: string | null;
 }

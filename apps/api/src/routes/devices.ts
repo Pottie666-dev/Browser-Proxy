@@ -3,7 +3,7 @@ import { rateLimit } from "express-rate-limit";
 import { z } from "zod";
 import { requireAuth, bearer, ownerFilter, audit } from "../lib/auth";
 import { UserModel } from "../lib/auth-model";
-import { AccountModel } from "../lib/account-model";
+import { assignDevice } from "../lib/device-consistency";
 import { DeviceModel, PairingModel } from "../lib/device-model";
 import { connectMongo } from "../lib/mongo";
 import { HttpError, randomToken, tokenHash } from "../lib/security";
@@ -32,8 +32,10 @@ router.use(
   rateLimit({
     windowMs: 60000,
     limit: 60,
+    skip: (req) => req.method === "POST" && req.path === "/self/heartbeat",
     standardHeaders: "draft-8",
     legacyHeaders: false,
+    message: { error: "Too many device requests" },
   }),
 );
 const publicDevice = (d: any) => ({
@@ -90,6 +92,25 @@ router.post("/register", async (req, res) => {
     expiresAt: tokenExpiresAt.toISOString(),
   });
 });
+router.use(
+  "/self",
+  rateLimit({
+    windowMs: 60000,
+    limit: 120,
+    skipSuccessfulRequests: true,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    message: { error: "Too many device requests" },
+  }),
+);
+const heartbeatLimit = rateLimit({
+  windowMs: 60000,
+  limit: 12,
+  keyGenerator: (_req, res) => String(res.locals.device._id),
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: { error: "Too many device requests" },
+});
 router.use("/self", async (req, res, next) => {
   try {
     const token = bearer(req);
@@ -111,7 +132,7 @@ router.use("/self", async (req, res, next) => {
     next(e);
   }
 });
-router.post("/self/heartbeat", async (req, res) => {
+router.post("/self/heartbeat", heartbeatLimit, async (req, res) => {
   const body = heartbeatSchema.safeParse(req.body);
   if (!body.success) throw new HttpError(400, "Invalid heartbeat");
   const d = await DeviceModel.findOneAndUpdate(
@@ -150,30 +171,21 @@ router.get("/", async (_req, res) =>
 );
 router.patch("/:id/assignment", async (req, res) => {
   const b = z
-    .object({ accountId: z.string().nullable() })
+    .object({
+      accountId: z
+        .string()
+        .regex(/^[a-fA-F0-9]{24}$/)
+        .nullable(),
+    })
     .strict()
     .safeParse(req.body);
-  if (!b.success) throw new HttpError(400, "Invalid assignment");
-  const filter = ownerFilter(req.params.id as string, res.locals.userId);
-  if (
-    b.data.accountId &&
-    !(await AccountModel.exists(
-      ownerFilter(b.data.accountId, res.locals.userId),
-    ))
-  )
-    throw new HttpError(404, "Account not found");
-  let d;
-  try {
-    d = await DeviceModel.findOneAndUpdate(
-      { ...filter, revokedAt: { $exists: false } },
-      { $set: { accountId: b.data.accountId } },
-      { new: true },
-    );
-  } catch (e: any) {
-    if (e.code === 11000) throw new HttpError(409, "Account already assigned");
-    throw e;
-  }
-  if (!d) throw new HttpError(404, "Device not found");
+  if (!b.success)
+    throw new HttpError(400, "Invalid assignment: use an account ID or null");
+  const d = await assignDevice(
+    req.params.id as string,
+    res.locals.userId,
+    b.data.accountId?.toLowerCase() ?? null,
+  );
   await audit(res.locals.userId, "device.assignment", String(d._id));
   res.json(publicDevice(d));
 });

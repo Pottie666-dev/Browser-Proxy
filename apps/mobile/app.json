@@ -38,7 +38,8 @@
         }
       ],
       "expo-web-browser",
-      "expo-secure-store"
+      "expo-secure-store",
+      "./plugins/withLocalBlurView.cjs"
     ],
     "experiments": {
       "typedRoutes": true,

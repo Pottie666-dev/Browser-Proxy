@@ -49,6 +49,8 @@ app.use(
   rateLimit({
     windowMs: 60000,
     limit: 300,
+    skip: (req) =>
+      req.method === "POST" && req.path === "/api/devices/self/heartbeat",
     standardHeaders: "draft-8",
     legacyHeaders: false,
     message: { error: "Too many requests" },
@@ -76,16 +78,14 @@ const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
   if (error?.type === "entity.too.large") status = 413;
   if (error?.code === 11000) status = 409;
   logger.warn({ status, type: error?.name }, "Request rejected");
-  res
-    .status(status)
-    .json({
-      error:
-        error instanceof HttpError
-          ? error.message
-          : status === 500
-            ? "Internal server error"
-            : "Invalid request",
-    });
+  res.status(status).json({
+    error:
+      error instanceof HttpError
+        ? error.message
+        : status === 500
+          ? "Internal server error"
+          : "Invalid request",
+  });
 };
 app.use(errorHandler);
 export default app;

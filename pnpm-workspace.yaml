@@ -63,9 +63,9 @@ overrides:
   esbuild>@esbuild/android-arm64: '-'
   esbuild>@esbuild/android-x64: '-'
   esbuild>@esbuild/openharmony-arm64: '-'
-  http-cache-semantics: ^4.3.0
   fast-copy: ^4.1.0
   fast-uri: ^3.1.8
+  http-cache-semantics: ^4.3.0
   image-size: ^2.0.3
   js-yaml@^3.0.0: ^3.15.2
   js-yaml@^4.0.0: ^4.3.2
@@ -84,5 +84,9 @@ overrides:
 
 patchedDependencies:
   '@expo/plist@0.4.9': patches/@expo__plist@0.4.9.patch
+  braces@3.0.3: patches/braces@3.0.3.patch
+  expo-blur@15.0.8: patches/expo-blur@15.0.8.patch
   metro@0.83.3: patches/metro@0.83.3.patch
   metro@0.83.7: patches/metro@0.83.7.patch
+  node-forge@1.4.0: patches/node-forge@1.4.0.patch
+  sprintf-js@1.0.3: patches/sprintf-js@1.0.3.patch

@@ -76,9 +76,9 @@ overrides:
   esbuild>@esbuild/android-arm64: '-'
   esbuild>@esbuild/android-x64: '-'
   esbuild>@esbuild/openharmony-arm64: '-'
-  http-cache-semantics: ^4.3.0
   fast-copy: ^4.1.0
   fast-uri: ^3.1.8
+  http-cache-semantics: ^4.3.0
   image-size: ^2.0.3
   js-yaml@^3.0.0: ^3.15.2
   js-yaml@^4.0.0: ^4.3.2
@@ -99,12 +99,24 @@ patchedDependencies:
   '@expo/plist@0.4.9':
     hash: 1483221f0df004bbad1c36677b6b3799a291b1e5c4c7f9f49035f874b2c811a6
     path: patches/@expo__plist@0.4.9.patch
+  braces@3.0.3:
+    hash: c5ab265d70de1a3f5292209f144b774a2bc4da4df8051f28c1dbc210a6c212e2
+    path: patches/braces@3.0.3.patch
+  expo-blur@15.0.8:
+    hash: a3021c5e52c3de2360a0b9ec7a75eafe021eece256d610b627c9c380f6d133fa
+    path: patches/expo-blur@15.0.8.patch
   metro@0.83.3:
     hash: a5857bc0bc1ae93b6d0eb0f7095c76c5e00e17e3e28df544df646c8749b55820
     path: patches/metro@0.83.3.patch
   metro@0.83.7:
     hash: c6f66b68d2f4f3027fec461f488150212a297a73c070874362ebd7e433c9f5ae
     path: patches/metro@0.83.7.patch
+  node-forge@1.4.0:
+    hash: bdd899a91341b1ea09eeafb852ed49366b7319675a1d0b5c6d1f3c598b1c368a
+    path: patches/node-forge@1.4.0.patch
+  sprintf-js@1.0.3:
+    hash: 1acae58fa6be3e29e1b02a42a504252ede65e13767bf666eb3002ccda08ed2df
+    path: patches/sprintf-js@1.0.3.patch
 
 importers:
 
@@ -206,7 +218,7 @@ importers:
         version: 54.0.35(@babel/core@7.29.7)(@expo/metro-runtime@6.1.2)(expo-router@6.0.24)(react-native-webview@13.15.0(react-native@0.81.5(@babel/core@7.29.7)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.7)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)(typescript@5.9.3)
       expo-blur:
         specifier: ~15.0.8
-        version: 15.0.8(expo@54.0.35)(react-native@0.81.5(@babel/core@7.29.7)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
+        version: 15.0.8(patch_hash=a3021c5e52c3de2360a0b9ec7a75eafe021eece256d610b627c9c380f6d133fa)(expo@54.0.35)(react-native@0.81.5(@babel/core@7.29.7)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
       expo-clipboard:
         specifier: ~8.0.8
         version: 8.0.8(expo@54.0.35)(react-native@0.81.5(@babel/core@7.29.7)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
@@ -6732,7 +6744,7 @@ snapshots:
       glob: 13.0.6
       lan-network: 0.2.1
       minimatch: 9.0.9
-      node-forge: 1.4.0
+      node-forge: 1.4.0(patch_hash=bdd899a91341b1ea09eeafb852ed49366b7319675a1d0b5c6d1f3c598b1c368a)
       npm-package-arg: 11.0.3
       ora: 3.4.0
       picomatch: 4.0.4
@@ -6769,7 +6781,7 @@ snapshots:
 
   '@expo/code-signing-certificates@0.0.6':
     dependencies:
-      node-forge: 1.4.0
+      node-forge: 1.4.0(patch_hash=bdd899a91341b1ea09eeafb852ed49366b7319675a1d0b5c6d1f3c598b1c368a)
 
   '@expo/config-plugins@54.0.4':
     dependencies:
@@ -8646,7 +8658,7 @@ snapshots:
 
   argparse@1.0.10:
     dependencies:
-      sprintf-js: 1.0.3
+      sprintf-js: 1.0.3(patch_hash=1acae58fa6be3e29e1b02a42a504252ede65e13767bf666eb3002ccda08ed2df)
 
   argparse@2.0.1: {}
 
@@ -8846,7 +8858,7 @@ snapshots:
     dependencies:
       balanced-match: 4.0.4
 
-  braces@3.0.3:
+  braces@3.0.3(patch_hash=c5ab265d70de1a3f5292209f144b774a2bc4da4df8051f28c1dbc210a6c212e2):
     dependencies:
       fill-range: 7.1.1
 
@@ -9379,7 +9391,7 @@ snapshots:
       - supports-color
       - typescript
 
-  expo-blur@15.0.8(expo@54.0.35)(react-native@0.81.5(@babel/core@7.29.7)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0):
+  expo-blur@15.0.8(patch_hash=a3021c5e52c3de2360a0b9ec7a75eafe021eece256d610b627c9c380f6d133fa)(expo@54.0.35)(react-native@0.81.5(@babel/core@7.29.7)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0):
     dependencies:
       expo: 54.0.35(@babel/core@7.29.7)(@expo/metro-runtime@6.1.2)(expo-router@6.0.24)(react-native-webview@13.15.0(react-native@0.81.5(@babel/core@7.29.7)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.7)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)(typescript@5.9.3)
       react: 19.1.0
@@ -10638,7 +10650,7 @@ snapshots:
 
   micromatch@4.0.8:
     dependencies:
-      braces: 3.0.3
+      braces: 3.0.3(patch_hash=c5ab265d70de1a3f5292209f144b774a2bc4da4df8051f28c1dbc210a6c212e2)
       picomatch: 2.3.2
 
   mime-db@1.52.0: {}
@@ -10760,7 +10772,7 @@ snapshots:
     dependencies:
       whatwg-url: 5.0.0
 
-  node-forge@1.4.0: {}
+  node-forge@1.4.0(patch_hash=bdd899a91341b1ea09eeafb852ed49366b7319675a1d0b5c6d1f3c598b1c368a): {}
 
   node-int64@0.4.0: {}
 
@@ -11636,7 +11648,7 @@ snapshots:
 
   split2@4.2.0: {}
 
-  sprintf-js@1.0.3: {}
+  sprintf-js@1.0.3(patch_hash=1acae58fa6be3e29e1b02a42a504252ede65e13767bf666eb3002ccda08ed2df): {}
 
   stack-utils@2.0.6:
     dependencies:

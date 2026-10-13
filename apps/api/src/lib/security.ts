@@ -111,6 +111,7 @@ export function revealAccount(data: Record<string, unknown>) {
   for (const field of sensitiveFields)
     if (output[field] !== undefined && output[field] !== null)
       output[field] = decrypt(output[field], `account:${owner}:${id}:${field}`);
+  delete output.deviceAssignmentRevision;
   delete output.ownerId;
   delete output._id;
   delete output.__v;

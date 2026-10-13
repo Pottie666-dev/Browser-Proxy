@@ -16,7 +16,11 @@ class PresenceService:Service(){
  getSystemService(NotificationManager::class.java).createNotificationChannel(NotificationChannel("presence","Companion connection",NotificationManager.IMPORTANCE_LOW))
  if(Build.VERSION.SDK_INT>=34)startForeground(2,notification("Connecting · remote control unavailable"),ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE) else startForeground(2,notification("Connecting · remote control unavailable"))
  running=true
- executor.scheduleWithFixedDelay({try{Heartbeat.send(this);if(TokenVault(this).read()==null){stopSelf();return@scheduleWithFixedDelay};getSystemService(NotificationManager::class.java).notify(2,notification("Registered · screen access requires separate consent"))}catch(_:Exception){getSystemService(NotificationManager::class.java).notify(2,notification("Connection lost · retrying securely"))}},0,30,java.util.concurrent.TimeUnit.SECONDS)
+ executor.scheduleWithFixedDelay({try{
+ val result=Heartbeat.send(this)
+ if(result==HeartbeatResult.UNPAIRED || result==HeartbeatResult.REVOKED){stopSelf();stopService(Intent(this,CaptureService::class.java));return@scheduleWithFixedDelay}
+ if(result==HeartbeatResult.CONNECTED)getSystemService(NotificationManager::class.java).notify(2,notification("Connected · capture requires separate consent"))
+ }catch(_:Exception){getSystemService(NotificationManager::class.java).notify(2,notification("Connection lost · retrying securely"))}},0,30,java.util.concurrent.TimeUnit.SECONDS)
  return START_NOT_STICKY
  }
  override fun onDestroy(){running=false;executor.shutdownNow();super.onDestroy()}

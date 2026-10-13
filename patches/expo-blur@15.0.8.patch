@@ -1,0 +1,11 @@
+diff --git a/android/build.gradle b/android/build.gradle
+index d7200ff66e7c54d5b4b24ef6fc7c511ed279c2be..f6a74265f0175e097e307257f02cc5ae1cd3a1da 100644
+--- a/android/build.gradle
++++ b/android/build.gradle
+@@ -15,5 +15,5 @@ android {
+ }
+ 
+ dependencies {
+-  implementation 'com.github.Dimezis:BlurView:version-2.0.6'
++  implementation project(':browser-proxy-blurview')
+ }

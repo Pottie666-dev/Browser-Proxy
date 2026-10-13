@@ -3,6 +3,7 @@ import mongoose, { Schema, type InferSchemaType } from "mongoose";
 const accountSchema = new Schema(
   {
     ownerId: { type: String, required: true, index: true },
+    deviceAssignmentRevision: { type: Number, default: 0, select: false },
     surname: { type: String },
     name: { type: String, required: true, trim: true, default: "New Account" },
     username: { type: String, trim: true },
@@ -45,4 +46,5 @@ const accountSchema = new Schema(
 export type AccountDocument = InferSchemaType<typeof accountSchema>;
 
 export const AccountModel =
-  mongoose.models.Account ?? mongoose.model("Account", accountSchema, "accounts");
+  mongoose.models.Account ??
+  mongoose.model("Account", accountSchema, "accounts");

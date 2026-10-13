@@ -612,8 +612,10 @@ export const AssignDeviceParams = zod.object({
   id: zod.coerce.string(),
 });
 
+export const assignDeviceBodyAccountIdRegExp = new RegExp("^[a-fA-F0-9]{24}$");
+
 export const AssignDeviceBody = zod.object({
-  accountId: zod.string().nullable(),
+  accountId: zod.string().regex(assignDeviceBodyAccountIdRegExp).nullable(),
 });
 
 export const AssignDeviceResponse = zod.object({

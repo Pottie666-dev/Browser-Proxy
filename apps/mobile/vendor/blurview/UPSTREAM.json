@@ -1,0 +1,22 @@
+{
+  "repository": "https://github.com/Dimezis/BlurView",
+  "tag": "version-2.0.6",
+  "tagObject": "f5f7a44f37e39bf9fc8bfa226b5ae56c7760c6f3",
+  "commit": "afc19dc45718b739d818af324a4cd0f85dafd653",
+  "license": "Apache-2.0 (see LICENSE.md)",
+  "adaptation": "Only manifest package moved into Gradle namespace; Java and resources unchanged. Modern root AGP used; no upstream sample/test/publishing plugins.",
+  "files": {
+    "src/main/AndroidManifest.xml": "6ce1f289e07c5e4bb592f62cdbf94c5cf59907d4de11bf3daea9aaca48426976",
+    "src/main/java/eightbitlab/com/blurview/BlurAlgorithm.java": "a6eeff00dc67e6bb7a8fca2fa9d9be31027d8d2376d63c51681bdcb1752af84f",
+    "src/main/java/eightbitlab/com/blurview/BlurController.java": "75dbb88120efd675b648ce45896c10702e5ab2ecc09b782e17f6dfac8430a488",
+    "src/main/java/eightbitlab/com/blurview/BlurView.java": "81a88052f5c66e7431ca99adb6b3badc7ce359e4067e61abe21d8e8169327f12",
+    "src/main/java/eightbitlab/com/blurview/BlurViewCanvas.java": "fd3f6090fc8451688f1e58041ceade0a0a96df29804f122f93f34d380a90ec46",
+    "src/main/java/eightbitlab/com/blurview/BlurViewFacade.java": "3f586d0853a7053394b5bb8c2c8578960a1172d6a82231c751725b24c652b904",
+    "src/main/java/eightbitlab/com/blurview/NoOpController.java": "202d58783ad387e2b412e62ee1fdffbcaabc61a51f463af26b8950518549cb6d",
+    "src/main/java/eightbitlab/com/blurview/PreDrawBlurController.java": "71423a05727ae443e74d268b666df0ea118ab2821797b3f135c6dacb4aa7ef8c",
+    "src/main/java/eightbitlab/com/blurview/RenderEffectBlur.java": "b56515e2836a43fb418c7b7fc2f6741f7e3c207c43c5bff0fafe5f15fbd19979",
+    "src/main/java/eightbitlab/com/blurview/RenderScriptBlur.java": "2ded6d8520402d5a150dde63dd8d780e6dde6d6df3f6e84f1d9e1df841296826",
+    "src/main/java/eightbitlab/com/blurview/SizeScaler.java": "e1ea63b231dc15429524d041f12d053a0a318b5c1832fdff579729b4d2d2c1ca",
+    "src/main/res/values/styles.xml": "5323e656d1285710bf195f1b27e72b25d622955c4caa5f2bf54712ce31390522"
+  }
+}

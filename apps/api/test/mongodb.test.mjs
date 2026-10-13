@@ -129,6 +129,241 @@ test(
         );
       });
       await t.test(
+        "device assignment validates ownership and is consistent with concurrent deletion",
+        async () => {
+          const grant = await request("/api/devices/pairing", "POST", {});
+          const registered = await request(
+            "/api/devices/register",
+            "POST",
+            { code: grant.body.code, name: "Concurrent fixture" },
+            null,
+          );
+          assert.equal(registered.status, 201);
+          const id = registered.body.device.id;
+          for (const accountId of ["", " ", "not-an-id"])
+            assert.equal(
+              (
+                await request(`/api/devices/${id}/assignment`, "PATCH", {
+                  accountId,
+                })
+              ).status,
+              400,
+            );
+          assert.equal(
+            (
+              await request(`/api/devices/${id}/assignment`, "PATCH", {
+                accountId: "000000000000000000000001",
+              })
+            ).status,
+            404,
+          );
+          const foreign = (
+            await request("/api/accounts", "POST", { name: "Foreign" }, bob)
+          ).body;
+          assert.equal(
+            (
+              await request(`/api/devices/${id}/assignment`, "PATCH", {
+                accountId: foreign.id,
+              })
+            ).status,
+            404,
+          );
+          assert.equal(
+            (
+              await request(
+                `/api/accounts/${foreign.id}`,
+                "DELETE",
+                undefined,
+                bob,
+              )
+            ).status,
+            204,
+          );
+          for (let attempt = 0; attempt < 8; attempt++) {
+            const account = (
+              await request("/api/accounts", "POST", {
+                name: "Concurrent deletion fixture",
+              })
+            ).body;
+            const [assignment, deletion] = await Promise.all([
+              request(`/api/devices/${id}/assignment`, "PATCH", {
+                accountId: account.id,
+              }),
+              request(`/api/accounts/${account.id}`, "DELETE"),
+            ]);
+            assert.ok(
+              [200, 404].includes(assignment.status),
+              JSON.stringify(assignment),
+            );
+            assert.equal(deletion.status, 204);
+            assert.equal(
+              await connection.db.collection("accounts").countDocuments({
+                _id: new mongoose.Types.ObjectId(account.id),
+              }),
+              0,
+            );
+            assert.equal(
+              await connection.db
+                .collection("companiondevices")
+                .countDocuments({ accountId: account.id }),
+              0,
+            );
+          }
+          const oldAccount = (
+            await request("/api/accounts", "POST", { name: "Old assignment" })
+          ).body;
+          const newAccount = (
+            await request("/api/accounts", "POST", { name: "New assignment" })
+          ).body;
+          assert.equal(
+            (
+              await request(`/api/devices/${id}/assignment`, "PATCH", {
+                accountId: oldAccount.id,
+              })
+            ).status,
+            200,
+          );
+          const [moved, oldDeleted] = await Promise.all([
+            request(`/api/devices/${id}/assignment`, "PATCH", {
+              accountId: newAccount.id,
+            }),
+            request(`/api/accounts/${oldAccount.id}`, "DELETE"),
+          ]);
+          assert.equal(moved.status, 200);
+          assert.equal(oldDeleted.status, 204);
+          assert.equal(
+            (await request("/api/devices")).body.find((d) => d.id === id)
+              .accountId,
+            newAccount.id,
+          );
+          assert.equal(
+            (await request(`/api/accounts/${newAccount.id}`, "DELETE")).status,
+            204,
+          );
+          const target = (
+            await request("/api/accounts", "POST", {
+              name: "Unique assignment fixture",
+            })
+          ).body;
+          const secondGrant = await request("/api/devices/pairing", "POST", {});
+          const second = (
+            await request(
+              "/api/devices/register",
+              "POST",
+              { code: secondGrant.body.code, name: "Second fixture" },
+              null,
+            )
+          ).body.device.id;
+          const competing = await Promise.all(
+            [id, second].map((device) =>
+              request(`/api/devices/${device}/assignment`, "PATCH", {
+                accountId: target.id,
+              }),
+            ),
+          );
+          assert.deepEqual(competing.map((r) => r.status).sort(), [200, 409]);
+          assert.equal(
+            await connection.db
+              .collection("companiondevices")
+              .countDocuments({ accountId: target.id }),
+            1,
+          );
+          assert.equal(
+            (await request(`/api/accounts/${target.id}`, "DELETE")).status,
+            204,
+          );
+          assert.equal(
+            await connection.db
+              .collection("companiondevices")
+              .countDocuments({ accountId: target.id }),
+            0,
+          );
+        },
+      );
+      await t.test(
+        "authenticated fleet heartbeats do not share an IP or interactive quota",
+        async () => {
+          const rows = Array.from({ length: 32 }, (_, i) => ({
+            ownerId: alice.userId,
+            name: `Fleet fixture ${i}`,
+            token: randomBytes(32).toString("base64url"),
+          }));
+          const { createHash } = await import("node:crypto");
+          await connection.db.collection("companiondevices").insertMany(
+            rows.map(({ token, ...row }) => ({
+              ...row,
+              accountId: null,
+              tokenHash: createHash("sha256").update(token).digest("hex"),
+              tokenExpiresAt: new Date(Date.now() + 86400000),
+            })),
+          );
+          const status = {
+            batteryPercent: 70,
+            charging: false,
+            temperatureC: 25,
+            androidVersion: "14",
+            model: "Fleet fixture",
+            captureActive: false,
+            accessibilityEnabled: false,
+          };
+          for (const row of rows)
+            for (let n = 0; n < 10; n++)
+              assert.equal(
+                (
+                  await request("/api/devices/self/heartbeat", "POST", status, {
+                    accessToken: row.token,
+                  })
+                ).status,
+                200,
+              );
+          for (let n = 0; n < 2; n++)
+            assert.equal(
+              (
+                await request("/api/devices/self/heartbeat", "POST", status, {
+                  accessToken: rows[0].token,
+                })
+              ).status,
+              200,
+            );
+          assert.equal(
+            (
+              await request("/api/devices/self/heartbeat", "POST", status, {
+                accessToken: rows[0].token,
+              })
+            ).status,
+            429,
+          );
+          assert.equal(
+            (
+              await request("/api/devices/self/heartbeat", "POST", status, {
+                accessToken: rows[1].token,
+              })
+            ).status,
+            200,
+          );
+          assert.equal((await request("/api/devices")).status, 200);
+          let limited = false;
+          for (let n = 0; n < 65; n++) {
+            if ((await request("/api/devices")).status === 429) {
+              limited = true;
+              break;
+            }
+          }
+          assert.equal(limited, true);
+          assert.equal(
+            (
+              await request("/api/devices/self/heartbeat", "POST", status, {
+                accessToken: rows[2].token,
+              })
+            ).status,
+            200,
+          );
+          // A fresh API process resets volatile test rate-limit counters; database remains persistent.
+          await stop();
+          await start();
+        },
+      );
+      await t.test(
         "companion pairing replay, ownership, rotation and revocation",
         async () => {
           const pairing = await request("/api/devices/pairing", "POST", {});
@@ -241,17 +476,15 @@ test(
             false,
           );
           const expired = await request("/api/devices/pairing", "POST", {});
-          await connection.db
-            .collection("devicepairings")
-            .updateOne(
-              {
-                codeHash: (await import("node:crypto"))
-                  .createHash("sha256")
-                  .update(expired.body.code)
-                  .digest("hex"),
-              },
-              { $set: { expiresAt: new Date(0) } },
-            );
+          await connection.db.collection("devicepairings").updateOne(
+            {
+              codeHash: (await import("node:crypto"))
+                .createHash("sha256")
+                .update(expired.body.code)
+                .digest("hex"),
+            },
+            { $set: { expiresAt: new Date(0) } },
+          );
           assert.equal(
             (
               await request(

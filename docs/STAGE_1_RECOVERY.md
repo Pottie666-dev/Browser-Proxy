@@ -8,7 +8,7 @@ screen replacement was performed.
 
 ## Development and validation
 
-Use Node.js 20.19 or newer and the pinned PNPM 9.15.9. From the repository root:
+Use Node.js 20.19 or newer and the currently pinned PNPM 10.28.2. From the repository root:
 
 ```sh
 pnpm install --frozen-lockfile --strict-peer-dependencies
@@ -56,9 +56,9 @@ uses the development logger, verifying Pino's installed worker/transport path.
 Pino is external to the API bundle because its former build plugin declared an
 incompatible esbuild peer range; logging functionality is retained.
 
-## Browser host and preserved work
+## Historical Stage 1 browser host and preserved work
 
-Standard `react-native-webview` is the default host. Existing tabs, bookmarks,
+At Stage 1, standard `react-native-webview` was the default host. Stage 3 superseded this with isolated remote Chromium; see STAGE_3_BROWSER_ENGINE.md. The following describes retained historical work. Existing tabs, bookmarks,
 history, fingerprint/form scripts, state messages, and session controls remain.
 The custom native bridge, capabilities, profile helpers, proxy models/routes,
 and patch archives are preserved. The experimental host requires both

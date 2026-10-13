@@ -26,7 +26,7 @@ class CaptureService: Service() {
  reader=android.media.ImageReader.newInstance(metrics.widthPixels,metrics.heightPixels,android.graphics.PixelFormat.RGBA_8888,2)
  reader?.setOnImageAvailableListener({it.acquireLatestImage()?.close()},Handler(mainLooper))
  display=projection?.createVirtualDisplay("BrowserProxyCapture",metrics.widthPixels,metrics.heightPixels,metrics.densityDpi,android.hardware.display.DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,reader?.surface,null,Handler(mainLooper))
- heartbeat.scheduleWithFixedDelay({try{Heartbeat.send(this);if(TokenVault(this).read()==null)stopSelf()}catch(_:Exception){ /* retry without storing or logging credentials */ }},0,30,java.util.concurrent.TimeUnit.SECONDS)
+ heartbeat.scheduleWithFixedDelay({try{val result=Heartbeat.send(this);if(result==HeartbeatResult.UNPAIRED || result==HeartbeatResult.REVOKED)stopSelf()}catch(_:Exception){ /* retry without storing or logging credentials */ }},0,30,java.util.concurrent.TimeUnit.SECONDS)
  return START_NOT_STICKY
  }
  override fun onDestroy(){active=false;heartbeat.shutdownNow();display?.release();reader?.close();projection?.stop();projection=null;super.onDestroy()}

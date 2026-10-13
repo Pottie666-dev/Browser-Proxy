@@ -1,4 +1,4 @@
-import { DeviceModel } from "../lib/device-model";
+import { deleteAccountConsistently } from "../lib/device-consistency";
 import {
   closeAccountBrowser,
   resetAccountBrowser,
@@ -589,17 +589,8 @@ router.delete("/:id", async (req, res, next) => {
       )
         throw new HttpError(404, "Not found");
       release = beginBrowserChange(res.locals.userId, req.params.id);
+      await deleteAccountConsistently(req.params.id, res.locals.userId);
       await resetAccountBrowser(res.locals.userId, req.params.id);
-      if (
-        !(await AccountModel.findOneAndDelete(
-          ownerFilter(req.params.id, res.locals.userId),
-        ))
-      )
-        throw new HttpError(404, "Not found");
-      await DeviceModel.updateMany(
-        { ownerId: res.locals.userId, accountId: req.params.id },
-        { $set: { accountId: null } },
-      );
       await audit(res.locals.userId, "account.delete", req.params.id);
       res.status(204).send();
       return;

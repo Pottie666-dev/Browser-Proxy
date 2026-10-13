@@ -63,3 +63,5 @@ Thumbs.db
 apps/android-companion/.gradle/
 apps/android-companion/**/build/
 apps/android-companion/local.properties
+
+apps/android-companion/.kotlin/
