@@ -1,0 +1,6 @@
+# Set PUBLIC_API_HOST to an existing DNS hostname pointing to the public API host.
+# Caddy obtains trusted TLS certificates; no phone/router port forwarding is used.
+{$PUBLIC_API_HOST} {
+    reverse_proxy 127.0.0.1:8080
+    header -Server
+}

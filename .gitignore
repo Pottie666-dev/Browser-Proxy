@@ -68,3 +68,6 @@ apps/android-companion/.kotlin/
 
 # Local Gradle outputs from the pinned BlurView source module
 apps/mobile/vendor/**/build/
+
+# Downloadable Android CI outputs, never source-controlled
+hardware-artifacts/

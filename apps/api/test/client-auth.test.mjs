@@ -66,3 +66,20 @@ test("an unrelated site's 401 cannot invalidate the API session", async () => {
   );
   assert.equal(notified, false);
 });
+
+test("changing API origin during token refresh cannot send a token to either stale request", async () => {
+  setBaseUrl("https://old.example.invalid");
+  let resume;
+  setAuthTokenGetter(() => new Promise((r) => (resume = r)));
+  let sent = false;
+  globalThis.fetch = async () => {
+    sent = true;
+    return new Response("{}");
+  };
+  const pending = customFetch("/api/accounts");
+  await new Promise((r) => setImmediate(r));
+  setBaseUrl("https://new.example.invalid");
+  resume("synthetic-token");
+  await assert.rejects(pending, /origin changed/);
+  assert.equal(sent, false);
+});

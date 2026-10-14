@@ -1,0 +1,16 @@
+[Unit]
+Description=Browser-Proxy physical-device test API
+After=network-online.target
+Wants=network-online.target
+[Service]
+Type=simple
+User=browserproxy
+WorkingDirectory=/opt/browser-proxy/apps/api
+EnvironmentFile=/etc/browser-proxy/test.env
+ExecStart=/usr/bin/node --enable-source-maps dist/index.mjs
+Restart=on-failure
+UMask=0077
+# Browser workers require unprivileged network/PID/IPC namespaces.
+# Do not add namespace restrictions or disable Chromium sandbox to make startup pass.
+[Install]
+WantedBy=multi-user.target

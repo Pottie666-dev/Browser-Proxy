@@ -16,6 +16,7 @@ const DEFAULT_JSON_ACCEPT = "application/json, application/problem+json";
 // ---------------------------------------------------------------------------
 
 let _baseUrl: string | null = null;
+let _baseUrlGeneration = 0;
 let _authTokenGetter: AuthTokenGetter | null = null;
 let _authFailureHandler: (() => void | Promise<void>) | null = null;
 export function setAuthFailureHandler(
@@ -32,6 +33,7 @@ export function setAuthFailureHandler(
  * Pass `null` to clear the base URL.
  */
 export function setBaseUrl(url: string | null): void {
+  _baseUrlGeneration++;
   _baseUrl = url ? url.replace(/\/+$/, "") : null;
 }
 
@@ -342,6 +344,7 @@ export async function customFetch<T = unknown>(
   input: RequestInfo | URL,
   options: CustomFetchOptions = {},
 ): Promise<T> {
+  const baseGeneration = _baseUrlGeneration;
   input = applyBaseUrl(input);
   const { responseType = "auto", headers: headersInit, ...init } = options;
 
@@ -382,6 +385,8 @@ export async function customFetch<T = unknown>(
   }
   if (_authTokenGetter && sameApi && !headers.has("authorization")) {
     const token = await _authTokenGetter();
+    if (baseGeneration !== _baseUrlGeneration)
+      throw new Error("API origin changed while authorizing request");
     if (token) {
       headers.set("authorization", `Bearer ${token}`);
     }

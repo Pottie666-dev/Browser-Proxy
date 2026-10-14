@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+export CI=true EXPO_NO_TELEMETRY=1
 # Use caller-provided SDK/JDK/proxy trust. Never disable TLS or invent credentials.
 : "${JAVA_HOME:?Configure JDK 17}"
 : "${ANDROID_HOME:?Configure Android SDK 36}"
@@ -8,7 +9,8 @@ pnpm install --frozen-lockfile --strict-peer-dependencies
 pnpm run codegen
 pnpm run typecheck
 CI=true EXPO_NO_TELEMETRY=1 pnpm run mobile:prebuild
+export BROWSER_PROXY_DEV_KEYSTORE="$(pwd)/apps/mobile/android/app/debug.keystore"
 ./apps/android-companion/gradlew -p apps/android-companion :app:assembleDebug :app:testDebugUnitTest :app:lintDebug --max-workers=2 --no-daemon
-./apps/mobile/android/gradlew -p apps/mobile/android :app:assembleDebug -PreactNativeArchitectures=arm64-v8a --max-workers=2 --no-daemon
+./apps/mobile/android/gradlew -p apps/mobile/android :app:assembleRelease -PreactNativeArchitectures=arm64-v8a --max-workers=2 --no-daemon
 # Development signing is local; this does not promise identical APK bytes across signing keys.
-sha256sum apps/android-companion/app/build/outputs/apk/debug/app-debug.apk apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk
+sha256sum apps/android-companion/app/build/outputs/apk/debug/app-debug.apk apps/mobile/android/app/build/outputs/apk/release/app-release.apk

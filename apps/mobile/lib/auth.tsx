@@ -11,14 +11,16 @@ import * as SecureStore from "expo-secure-store";
 import {
   setAuthTokenGetter,
   setAuthFailureHandler,
+  setBaseUrl,
 } from "@workspace/api-client-react";
-import { getApiBaseUrl } from "./api-url";
+import { getApiBaseUrl, setRuntimeApiOrigin } from "./api-url";
 
 export type Session = {
   accessToken: string;
   refreshToken: string;
   expiresAt: string;
   userId: string;
+  apiOrigin?: string;
 };
 let session: Session | null = null;
 let refreshing: Promise<Session | null> | null = null;
@@ -81,10 +83,14 @@ async function exchange(path: string, body: unknown): Promise<Session> {
           ? "Registration is disabled by the server"
           : "Authentication request failed",
     );
-  return response.json();
+  return { ...(await response.json()), apiOrigin: base };
 }
 export async function accessToken(): Promise<string | null> {
   if (!session) return null;
+  if (session.apiOrigin && session.apiOrigin !== getApiBaseUrl()) {
+    await save(null);
+    return null;
+  }
   if (Date.parse(session.expiresAt) > Date.now() + 60000)
     return session.accessToken;
   if (!refreshing) {
@@ -121,11 +127,14 @@ export async function authenticatedFetch(
   path: string,
   options: RequestInit = {},
 ) {
+  const base = getApiBaseUrl();
   const token = await accessToken();
+  if (base !== getApiBaseUrl())
+    throw new Error("API origin changed during authorization");
   if (!token) throw new Error("Sign in to continue");
   const headers = new Headers(options.headers);
   headers.set("authorization", `Bearer ${token}`);
-  const response = await fetch(`${getApiBaseUrl()}${path}`, {
+  const response = await fetch(`${base}${path}`, {
     ...options,
     headers,
   });
@@ -141,6 +150,7 @@ const AuthContext = createContext<{
   loading: boolean;
   signIn(email: string, password: string, register?: boolean): Promise<void>;
   signOut(): Promise<void>;
+  configureApiOrigin(origin: string): Promise<void>;
 } | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const queries = useQueryClient();
@@ -157,8 +167,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     (async () => {
       try {
         if (Platform.OS !== "web") {
+          const endpoint = await SecureStore.getItemAsync(
+            "browser-proxy-api-origin-v1",
+          );
+          if (endpoint) setRuntimeApiOrigin(endpoint);
+          setBaseUrl(getApiBaseUrl());
           const stored = await SecureStore.getItemAsync(key);
           if (stored) session = JSON.parse(stored);
+          if (session && !session.apiOrigin) {
+            if (getApiBaseUrl().endsWith(".invalid")) await save(null);
+            else await save({ ...session, apiOrigin: getApiBaseUrl() });
+          }
         }
         if (session) await accessToken();
         setCurrent(session);
@@ -182,13 +201,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         session: current,
         loading,
+        async configureApiOrigin(origin) {
+          // Clearing first invalidates refreshes and prevents credentials crossing server origins.
+          const { validatePublicApiOrigin } = await import("./api-origin");
+          const next = validatePublicApiOrigin(origin);
+          if (next === getApiBaseUrl()) return;
+          await save(null);
+          if (Platform.OS !== "web")
+            await SecureStore.setItemAsync("browser-proxy-api-origin-v1", next);
+          setRuntimeApiOrigin(next);
+          setBaseUrl(next);
+          queries.clear();
+        },
         async signIn(email, password, register = false) {
-          await save(
-            await exchange(register ? "register" : "login", {
-              email,
-              password,
-            }),
-          );
+          const generation = epoch;
+          const next = await exchange(register ? "register" : "login", {
+            email,
+            password,
+          });
+          if (generation !== epoch)
+            throw new Error("Sign-in cancelled after server/session change");
+          await save(next);
         },
         async signOut() {
           try {

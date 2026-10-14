@@ -39,3 +39,5 @@ Existing documentation and native browser implementation history remain in `docs
 Stage 4 adds a separate Kotlin Android app (`com.browserproxy.companion`), Device Hub and secure device registration. Build, pairing steps and supported limitations: [Stage 4 Companion](docs/STAGE_4_ANDROID_COMPANION.md). Browser-only accounts continue using the isolated Stage 3 Chromium engine without device assignment.
 
 Stage 4.1 integration, builds, security backports and deployment requirements: [baseline validation](docs/STAGE_4_1_BASELINE.md).
+
+Stage 4.2 standalone APKs, public HTTPS carrier-network acceptance and diagnostic instructions: [hardware readiness](docs/STAGE_4_2_HARDWARE_READINESS.md).

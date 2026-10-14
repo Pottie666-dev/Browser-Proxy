@@ -9,12 +9,14 @@ import {
 } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../lib/auth";
+import { getApiBaseUrl } from "../lib/api-url";
 import { useColors } from "../hooks/useColors";
 
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const auth = useAuth();
   const colors = useColors();
   const queries = useQueryClient();
+  const [origin, setOrigin] = useState(getApiBaseUrl());
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [register, setRegister] = useState(false);
@@ -23,6 +25,9 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     queries.clear();
   }, [auth.session?.userId, queries]);
+  useEffect(() => {
+    if (!auth.loading) setOrigin(getApiBaseUrl());
+  }, [auth.loading]);
   if (auth.loading) return <ActivityIndicator style={{ flex: 1 }} />;
   if (auth.session)
     return (
@@ -32,6 +37,12 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     setBusy(true);
     setError("");
     try {
+      if (
+        !__DEV__ ||
+        origin !== getApiBaseUrl() ||
+        origin.startsWith("https://")
+      )
+        await auth.configureApiOrigin(origin);
       await auth.signIn(email.trim(), password, register);
       setPassword("");
     } catch (e) {
@@ -48,6 +59,19 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       <Text style={{ color: colors.mutedForeground }}>
         {register ? "Create your user login" : "Sign in to your account vault"}
       </Text>
+      <TextInput
+        accessibilityLabel="Public HTTPS API origin"
+        placeholder="https://api.your-domain.com"
+        autoCapitalize="none"
+        autoCorrect={false}
+        value={origin}
+        onChangeText={setOrigin}
+        editable={!busy}
+        style={[
+          styles.input,
+          { color: colors.foreground, borderColor: colors.border },
+        ]}
+      />
       <TextInput
         accessibilityLabel="Email"
         placeholder="Email"
