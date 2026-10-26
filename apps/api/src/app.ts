@@ -50,7 +50,8 @@ app.use(
     windowMs: 60000,
     limit: 300,
     skip: (req) =>
-      req.method === "POST" && req.path === "/api/devices/self/heartbeat",
+      (req.method === "POST" && req.path === "/api/devices/self/heartbeat") ||
+      req.path.startsWith("/api/remote/"),
     standardHeaders: "draft-8",
     legacyHeaders: false,
     message: { error: "Too many requests" },

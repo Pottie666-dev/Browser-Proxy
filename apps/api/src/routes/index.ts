@@ -1,3 +1,4 @@
+import remoteRouter from "./remote";
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
 import accountsRouter from "./accounts";
@@ -13,6 +14,7 @@ const router: IRouter = Router();
 router.use("/", healthRouter);
 router.use("/auth", authRouter);
 router.use("/devices", devicesRouter);
+router.use("/remote", remoteRouter);
 router.use("/accounts/:id/browser", browserRouter);
 router.use("/accounts", accountsRouter);
 router.use("/proxy", proxyRouter);

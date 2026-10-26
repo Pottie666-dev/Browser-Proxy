@@ -1,3 +1,4 @@
+import { requireDevice } from "../lib/device-auth";
 import { Router } from "express";
 import { rateLimit } from "express-rate-limit";
 import { z } from "zod";
@@ -111,27 +112,7 @@ const heartbeatLimit = rateLimit({
   legacyHeaders: false,
   message: { error: "Too many device requests" },
 });
-router.use("/self", async (req, res, next) => {
-  try {
-    const token = bearer(req);
-    const d: any =
-      token &&
-      (await DeviceModel.findOne({
-        tokenHash: tokenHash(token),
-        revokedAt: { $exists: false },
-        tokenExpiresAt: { $gt: new Date() },
-      }));
-    if (!d) throw new HttpError(401, "Device authentication required");
-    const owner: any = await UserModel.findById(d.ownerId);
-    if (!owner || owner.disabled)
-      throw new HttpError(401, "Device authentication required");
-    res.locals.device = d;
-    res.locals.deviceTokenHash = tokenHash(token!);
-    next();
-  } catch (e) {
-    next(e);
-  }
-});
+router.use("/self", requireDevice);
 router.post("/self/heartbeat", heartbeatLimit, async (req, res) => {
   const body = heartbeatSchema.safeParse(req.body);
   if (!body.success) throw new HttpError(400, "Invalid heartbeat");
