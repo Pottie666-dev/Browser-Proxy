@@ -49,7 +49,9 @@ class MainActivity: Activity() {
         button("Authorize screen capture") {
             if (coordinator.snapshot().credentials == null) { status.text = "Pair this phone first"; return@button }
             if (Build.VERSION.SDK_INT >= 33) requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 3)
-            startActivityForResult(getSystemService(MediaProjectionManager::class.java).createScreenCaptureIntent(), 2)
+            val captureManager = getSystemService(MediaProjectionManager::class.java)
+            val request = if (Build.VERSION.SDK_INT >= 34) captureManager.createScreenCaptureIntent(android.media.projection.MediaProjectionConfig.createConfigForDefaultDisplay()) else captureManager.createScreenCaptureIntent()
+            startActivityForResult(request, 2)
         }
         button("Stop screen capture") { stopService(Intent(this, CaptureService::class.java)) }
         button("Accessibility settings (optional)") { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }

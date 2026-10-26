@@ -1,1 +1,1 @@
-<resources><string name="accessibility_description">Prepare explicitly authorized remote interaction. No remote commands are enabled in Stage 4. Disable here at any time.</string></resources>
+<resources><string name="accessibility_description">Allow the authenticated controller of your assigned account to tap, swipe, navigate and replace focused non-password text while screen capture and a short-lived session are active. This permission reads the focused input node only. Enable manually and disable here at any time.</string></resources>

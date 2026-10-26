@@ -70,5 +70,14 @@
     "react-native-worklets": "0.5.1",
     "zod": "catalog:",
     "zod-validation-error": "^3.4.0"
+  },
+  "expo": {
+    "autolinking": {
+      "android": {
+        "buildFromSource": [
+          "expo-blur"
+        ]
+      }
+    }
   }
 }

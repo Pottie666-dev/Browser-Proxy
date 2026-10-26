@@ -108,6 +108,18 @@ export default function DeviceHub() {
           </Text>
           {!d.revoked ? (
             <>
+              {d.accountId ? (
+                <Pressable
+                  onPress={() =>
+                    router.push({
+                      pathname: "/android-viewer",
+                      params: { deviceId: d.id },
+                    })
+                  }
+                >
+                  <Text>Open live Android screen</Text>
+                </Pressable>
+              ) : null}
               <Pressable
                 onPress={() =>
                   action(() => assignDevice(d.id, { accountId: selection }))

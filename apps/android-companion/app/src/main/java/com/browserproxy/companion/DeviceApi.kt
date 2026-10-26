@@ -6,8 +6,8 @@ import javax.net.ssl.HttpsURLConnection
 
 class DeviceRejected: Exception("Device credentials expired or revoked; pair again")
 object DeviceApi {
-    fun post(origin: String, path: String, body: JSONObject, token: String? = null): JSONObject {
-        val connection = URL(ApiOrigin.validate(origin) + "/api/devices" + path).openConnection() as HttpsURLConnection
+    fun post(origin: String, path: String, body: JSONObject, token: String? = null, namespace: String = "devices"): JSONObject {
+        val connection = URL(ApiOrigin.validate(origin) + "/api/" + namespace + path).openConnection() as HttpsURLConnection
         connection.connectTimeout = 10000
         connection.readTimeout = 10000
         connection.requestMethod = "POST"
