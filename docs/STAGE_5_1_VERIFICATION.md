@@ -31,7 +31,7 @@ Install through Android's package installer or locally authorized USB. Verify th
 | Strict confined Browser Hub subset | **1 passed, 2 failed**, both blocked before namespace startup by `bwrap: setting up uid map: Read-only file system` |
 | New preflight policy tests | Included in the 65 API tests; accepts complete TLS configuration and rejects unsafe sandbox/namespace overrides, direct fallback, test storage, insecure TLS, wildcard CORS and missing TURN/TLS |
 | Source and packaged deployment preflight | Correctly returned nonzero on this unsuitable/incomplete host; no false readiness claim |
-| Deployable API release export and RELEASE.json hashes | Passed; runtime dependencies and all four helper/policy files present in `/workspace/stage51-api-release` |
+| Deployable API release export and RELEASE.json hashes | Passed; runtime dependencies and all four helper/policy files present in `/workspace/stage51-api-release-verified` |
 | Caddy template | `caddy validate` passed using the official image in a container with networking disabled; no certificate issuance/deployment |
 | Coturn template | Parsed and completed a verified local TLS handshake with a disposable test CA/certificate, loopback/interface/port overrides and no external traffic |
 | systemd unit verification on this cloud host | Could not validate runtime executable paths: this managed Debian host has no `/usr/bin/node`; the target Ubuntu guide explicitly requires Node there |
@@ -56,3 +56,5 @@ No existing VPS, Atlas credentials, real domain or physical phones were supplied
 The full four-phone checklist at the end of that guide remains **entirely unexecuted**. Actual screen capture consent, foreground/system indications, OEM encoding/WebView decoding, Accessibility gestures/password refusal, rotation, thermal behavior, public TURN/TCP/TLS, CGNAT transitions, real revocation timing and four independent mobile networks must be observed on hardware. Production signing, vendor/Play policy review, real-host positive preflight, storage/backup restore, TLS renewal and capacity/security review remain operator work.
 
 No paid hosting was purchased, no PR was merged, and JHP-Casino was not modified. Existing branch history and the original Stage 5 source bundle/APK remain preserved. A fresh Stage 5.1 complete-history bundle plus checksum is exported separately for recovery.
+
+The final portable API export corrects pnpm legacy deploy's checkout-pointing self-link, rejects every other dependency symlink escaping the release, and verifies runtime module resolution inside the export. A checked archive is available at `/workspace/Browser-Proxy-stage5-1-api-release.tar.gz` with a separate SHA256 file. The earlier exploratory export is not the delivery artifact.
