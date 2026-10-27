@@ -7,3 +7,5 @@ It documents the project vision, roadmap, architecture, Raspberry Pi setup, Andr
 When something important is discovered, it should be added here instead of relying on memory.
 
 Stage 5 development: [streaming/control design, local tools and hardware requirements](STAGE_5_STREAMING.md), [verification results](STAGE_5_VERIFICATION.md).
+
+Stage 5.1: [Ubuntu VPS, Atlas, HTTPS, Coturn, recovery and four-phone checklist](STAGE_5_1_UBUNTU_DEPLOYMENT.md), [APK and validation results](STAGE_5_1_VERIFICATION.md).
