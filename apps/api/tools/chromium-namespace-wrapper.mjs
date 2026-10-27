@@ -42,6 +42,11 @@ const child = spawn(
     "--ro-bind-try",
     "/lib64",
     "/lib64",
+    // Official Google Chrome installs native assets here on Ubuntu 24.04.
+    // Bind only this fixed vendor directory, never arbitrary /opt or host profiles.
+    "--ro-bind-try",
+    "/opt/google/chrome",
+    "/opt/google/chrome",
     "--ro-bind-try",
     "/etc/chromium.d",
     "/etc/chromium.d",

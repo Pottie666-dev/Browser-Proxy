@@ -1,0 +1,6 @@
+# Replace both example hostnames in all templates before installation.
+api.example.com {
+    reverse_proxy 127.0.0.1:8080
+    header -Server
+    # No access log containing query strings, headers or credentials.
+}

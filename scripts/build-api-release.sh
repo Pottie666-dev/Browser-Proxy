@@ -9,7 +9,7 @@ pnpm --filter @workspace/api-server deploy --legacy --prod --frozen-lockfile "$r
 node - "$release_dir" <<'NODE'
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const root=process.argv[2],api=path.join(root,'apps/api');
-const files=['dist/index.mjs','tools/chromium-namespace-wrapper.mjs','tools/namespace-browser-worker.mjs','tools/deployment-check.mjs'];
+const files=['dist/index.mjs','tools/chromium-namespace-wrapper.mjs','tools/namespace-browser-worker.mjs','tools/deployment-check.mjs','tools/deployment-policy.mjs'];
 const hashes=Object.fromEntries(files.map(file=>[file,crypto.createHash('sha256').update(fs.readFileSync(path.join(api,file))).digest('hex')]));
 fs.writeFileSync(path.join(root,'RELEASE.json'),JSON.stringify({nodeMinimum:'20.19',files:hashes,storage:'Dedicated persistent encrypted profile volume required; not included',host:'Linux Chromium + Bubblewrap + enabled unprivileged namespaces'},null,2)+'\n');
 NODE

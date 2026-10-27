@@ -1,0 +1,22 @@
+[Unit]
+Description=Browser-Proxy API and confined browser workers
+After=network-online.target
+Wants=network-online.target
+[Service]
+Type=simple
+User=browserproxy
+Group=browserproxy
+WorkingDirectory=/opt/browser-proxy/current/apps/api
+EnvironmentFile=/etc/browser-proxy/api.env
+ExecStartPre=/usr/bin/node tools/deployment-check.mjs
+ExecStart=/usr/bin/node --enable-source-maps dist/index.mjs
+Restart=on-failure
+RestartSec=5
+UMask=0077
+KillMode=control-group
+TimeoutStopSec=20
+LimitNOFILE=65536
+# Do not add RestrictNamespaces, PrivateUsers, a conflicting seccomp policy,
+# or disable Chromium's sandbox. Test every service hardening change as this user.
+[Install]
+WantedBy=multi-user.target

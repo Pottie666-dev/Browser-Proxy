@@ -42,6 +42,7 @@
     "dist",
     "tools/chromium-namespace-wrapper.mjs",
     "tools/namespace-browser-worker.mjs",
-    "tools/deployment-check.mjs"
+    "tools/deployment-check.mjs",
+    "tools/deployment-policy.mjs"
   ]
 }
